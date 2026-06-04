@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏆 La Porra del Mundial 2026 - Pronósticos y Clasificación</title>
+  <meta name="description" content="Participa en la porra interactiva del Mundial de Fútbol 2026. Haz tus predicciones de grupos, eliminatorias y campeón, y sigue la clasificación en directo.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar" id="main-nav">
+    <a href="#" class="logo" id="nav-logo">
+      🏆 <span>Mundial 2026</span> <small style="font-size:0.65rem; font-weight:normal; letter-spacing:0.5px;">PORRA APP</small>
+    </a>
+    
+    <div class="nav-links">
+      <button class="nav-btn active" id="btn-tab-predictor" onclick="switchMainTab('predictor')">
+        📝 Crear mi Porra
+      </button>
+      <button class="nav-btn" id="btn-tab-leaderboard" onclick="switchMainTab('leaderboard')">
+        📊 Clasificación
+        <span class="admin-mode-active-indicator" id="admin-nav-indicator" style="display:none;">ADMIN</span>
+      </button>
+      <button class="nav-btn" id="btn-tab-rules" onclick="switchMainTab('rules')">
+        ℹ️ Reglas
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="main-container">
+    
+    <!-- HEADER HERO -->
+    <header class="hero" id="app-hero">
+      <h1>La Porra del Mundial 2026 ⚽</h1>
+      <p>Crea tus pronósticos desde la fase de grupos hasta la gran final, comparte tu apuesta y compite contra tus amigos.</p>
+    </header>
+
+    <!-- SECTION 1: PREDICTOR (Participante) -->
+    <section id="section-predictor" class="app-section active">
+      
+      <!-- Predictor Step Tracker -->
+      <div class="glass-card" id="predictor-step-card" style="padding: 15px 25px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <span style="font-weight: 700; font-family: 'Outfit';" id="predictor-step-title">Paso 1: Identificación</span>
+        <div style="display: flex; gap: 8px; align-items: center;" id="step-indicator-dots">
+          <span class="team-rank-badge" style="background: var(--accent-gold); color: #000;" id="dot-1">1</span>
+          <span class="team-rank-badge" id="dot-2">2</span>
+          <span class="team-rank-badge" id="dot-3">3</span>
+          <span class="team-rank-badge" id="dot-4">4</span>
+          <span class="team-rank-badge" id="dot-5">5</span>
+        </div>
+      </div>
+
+      <!-- STEP 1: Identification -->
+      <div id="step-1-id" class="step-panel glass-card">
+        <h2 class="section-title">Registro de Participante</h2>
+        <p class="section-desc">Por favor, introduce tu nombre y datos para registrar tu apuesta en la clasificación del organizador.</p>
+        
+        <div class="registration-form">
+          <div class="form-group">
+            <label for="input-user-name">Tu Nombre Completo *</label>
+            <input type="text" id="input-user-name" placeholder="Ej. Juan Pérez" required autocomplete="off">
+          </div>
+          
+          <div class="form-group">
+            <label for="input-user-contact">Teléfono / WhatsApp *</label>
+            <input type="text" id="input-user-contact" placeholder="Ej. +34 600 000 000" required autocomplete="off">
+            <small style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px; display: block;">Se usará para identificarte en el cobro de la cuota.</small>
+          </div>
+          
+          <div class="form-group">
+            <label>Elige tu Avatar de la Suerte</label>
+            <div class="avatar-selector" id="user-avatar-selector">
+              <div class="avatar-option selected" data-avatar="⚽">⚽</div>
+              <div class="avatar-option" data-avatar="🏆">🏆</div>
+              <div class="avatar-option" data-avatar="🦁">🦁</div>
+              <div class="avatar-option" data-avatar="🔥">🔥</div>
+              <div class="avatar-option" data-avatar="👑">👑</div>
+              <div class="avatar-option" data-avatar="⚡">⚡</div>
+              <div class="avatar-option" data-avatar="🎯">🎯</div>
+              <div class="avatar-option" data-avatar="🦖">🦖</div>
+              <div class="avatar-option" data-avatar="🥷">🥷</div>
+              <div class="avatar-option" data-avatar="👽">👽</div>
+              <div class="avatar-option" data-avatar="🦄">🦄</div>
+              <div class="avatar-option" data-avatar="🌶️">🌶️</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-controls">
+          <div></div>
+          <button class="btn btn-primary" id="btn-step1-next" onclick="nextStep(2)">
+            Fase de Grupos &rarr;
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Group Predictions -->
+      <div id="step-2-groups" class="step-panel glass-card" style="display:none;">
+        <h2 class="section-title">Fase de Grupos (12 Grupos)</h2>
+        <p class="section-desc">Usa las flechas para ordenar cada grupo. Los <strong style="color: var(--accent-green);">dos primeros</strong> se clasifican directamente, el <strong style="color: var(--accent-gold);">tercero</strong> irá a la repesca, y el <strong style="color: var(--accent-red);">último</strong> queda eliminado.</p>
+        
+        <div class="groups-grid" id="groups-container">
+          <!-- Dynamically populated in app.js -->
+        </div>
+
+        <div class="step-controls">
+          <button class="btn btn-secondary" onclick="prevStep(1)">
+            &larr; Atrás
+          </button>
+          <button class="btn btn-primary" onclick="nextStep(3)">
+            Elegir Mejores Terceros &rarr;
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Wildcards (Best 3rd place teams) -->
+      <div id="step-3-wildcards" class="step-panel glass-card" style="display:none;">
+        <h2 class="section-title">Repesca: Mejores Terceros Clasificados</h2>
+        <p class="section-desc">Selecciona exactamente <strong>8 selecciones</strong> de entre las 12 que han quedado en 3er puesto para que pasen a la ronda de Dieciseisavos (Round of 32).</p>
+        
+        <div class="wildcard-counter-bar" id="wildcard-counter-bar">
+          <span style="font-weight: 600;" id="wildcard-count-text">Has seleccionado: 0 de 8 equipos</span>
+          <span class="payment-badge badge-pending" id="wildcard-status-badge">Incompleto</span>
+        </div>
+
+        <div class="wildcards-container" id="wildcards-container">
+          <!-- Dynamically populated in app.js -->
+        </div>
+
+        <div class="step-controls">
+          <button class="btn btn-secondary" onclick="prevStep(2)">
+            &larr; Atrás
+          </button>
+          <button class="btn btn-primary" id="btn-submit-wildcards" onclick="nextStep(4)" disabled>
+            Fase de Eliminatorias &rarr;
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 4: Knockout Stage (Bracket) -->
+      <div id="step-4-bracket" class="step-panel glass-card" style="display:none;">
+        <h2 class="section-title">Árbol de Eliminatorias Directas</h2>
+        <p class="section-desc">Haz clic en la bandera o el nombre del país que crees que ganará cada cruce para avanzar de ronda hasta coronar al Campeón.</p>
+        
+        <!-- Tab navigation inside the bracket for mobile responsiveness -->
+        <div class="bracket-navigation" id="bracket-nav-tabs">
+          <button class="bracket-tab-btn active" onclick="switchBracketTab('r32')">Dieciseisavos (R32)</button>
+          <button class="bracket-tab-btn" id="tab-btn-r16" onclick="switchBracketTab('r16')">Octavos (R16)</button>
+          <button class="bracket-tab-btn" id="tab-btn-qf" onclick="switchBracketTab('qf')">Cuartos</button>
+          <button class="bracket-tab-btn" id="tab-btn-sf" onclick="switchBracketTab('sf')">Semis y Final</button>
+        </div>
+
+        <!-- Viewport of the bracket -->
+        <div class="bracket-viewport" id="bracket-container">
+          
+          <!-- R32 Panel -->
+          <div id="bracket-panel-r32" class="bracket-panel active">
+            <div class="bracket-matches-list" id="matches-r32-list">
+              <!-- Dynamic -->
+            </div>
+            <div id="bracket-nav-next-r32" style="text-align: right; padding-top: 20px;"></div>
+          </div>
+ 
+          <!-- R16 Panel -->
+          <div id="bracket-panel-r16" class="bracket-panel">
+            <div class="bracket-matches-list" id="matches-r16-list">
+              <!-- Dynamic -->
+            </div>
+            <div id="bracket-nav-next-r16" style="text-align: right; padding-top: 20px;"></div>
+          </div>
+ 
+          <!-- QF Panel -->
+          <div id="bracket-panel-qf" class="bracket-panel">
+            <div class="bracket-matches-list" id="matches-qf-list">
+              <!-- Dynamic -->
+            </div>
+            <div id="bracket-nav-next-qf" style="text-align: right; padding-top: 20px;"></div>
+          </div>
+ 
+          <!-- SF & Final Panel -->
+          <div id="bracket-panel-sf" class="bracket-panel">
+            <div class="bracket-matches-list" style="grid-template-columns: 1fr;" id="matches-sf-final-list">
+              <!-- Dynamic -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Champion Trophy Banner -->
+        <div class="champion-banner" id="champion-display-section" style="display:none;">
+          <div class="trophy-icon">🏆</div>
+          <h3 style="font-size: 1.6rem;">TU CAMPEÓN DEL MUNDIAL 2026</h3>
+          <div class="champion-display-box" id="champion-box">
+            <!-- Dynamic -->
+          </div>
+        </div>
+
+        <div class="step-controls" style="margin-top: 30px;">
+          <button class="btn btn-secondary" onclick="prevStep(3)">
+            &larr; Atrás
+          </button>
+          <button class="btn btn-primary" id="btn-submit-bracket" onclick="nextStep(5)" disabled>
+            Preguntas Extra &rarr;
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 5: Tiebreakers & Extras -->
+      <div id="step-5-extras" class="step-panel glass-card" style="display:none;">
+        <h2 class="section-title">Pronósticos Adicionales y Desempates</h2>
+        <p class="section-desc">Completa estas preguntas adicionales para sumar puntos extra y como criterio de desempate de la porra.</p>
+        
+        <div class="extras-grid">
+          <div class="form-group glass-card" style="margin-bottom:0; background:rgba(255,255,255,0.01);">
+            <label for="input-extra-scorer">⚡ Bota de Oro (Máximo Goleador)</label>
+            <input type="text" id="input-extra-scorer" placeholder="Ej. Kylian Mbappé" autocomplete="off">
+            <small style="color:var(--text-muted); font-size:0.8rem; display:block; margin-top:5px;">El jugador que anote más goles en el torneo.</small>
+          </div>
+          
+          <div class="form-group glass-card" style="margin-bottom:0; background:rgba(255,255,255,0.01);">
+            <label for="input-extra-mvp">⭐ Balón de Oro (Mejor Jugador)</label>
+            <input type="text" id="input-extra-mvp" placeholder="Ej. Lamine Yamal" autocomplete="off">
+            <small style="color:var(--text-muted); font-size:0.8rem; display:block; margin-top:5px;">El MVP oficial otorgado por la FIFA.</small>
+          </div>
+
+          <div class="form-group glass-card" style="margin-bottom:0; background:rgba(255,255,255,0.01);">
+            <label for="input-extra-goals">⚽ Goles Totales en el Mundial</label>
+            <input type="number" id="input-extra-goals" placeholder="Ej. 172" min="50" max="400" autocomplete="off">
+            <small style="color:var(--text-muted); font-size:0.8rem; display:block; margin-top:5px;">Sirve para desempatar en la tabla general.</small>
+          </div>
+        </div>
+
+        <div class="step-controls">
+          <button class="btn btn-secondary" onclick="prevStep(4)">
+            &larr; Atrás
+          </button>
+          <button class="btn btn-primary" onclick="generateAndShowSummary()">
+            🏆 Finalizar Apuesta &rarr;
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 6: Finished Bet (Summary & Export) -->
+      <div id="step-6-summary" class="step-panel glass-card" style="display:none;">
+        <h2 class="section-title">¡Apuesta Registrada Correctamente!</h2>
+        <p class="section-desc">Tu apuesta ha sido guardada automáticamente en la clasificación central. Aquí tienes tu resumen:</p>
+        
+        <div class="summary-container">
+          <!-- Ticket / Summary Card -->
+          <div class="summary-card-canvas-box" id="ticket-summary">
+            <div class="summary-user-info">
+              <div class="summary-avatar" id="summary-badge-avatar">⚽</div>
+              <div>
+                <div class="summary-username" id="summary-lbl-name">Nombre de Usuario</div>
+                <div class="summary-phone" id="summary-lbl-contact">+34 000 000 000</div>
+              </div>
+            </div>
+            
+            <div class="summary-prediction-details">
+              <div class="summary-item">
+                <span class="summary-item-label">Campeón del Mundo:</span>
+                <span class="summary-item-value" id="summary-val-champion">🏆 España</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-item-label">Subcampeón:</span>
+                <span class="summary-item-value" id="summary-val-runnerup">Francia</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-item-label">Bota de Oro:</span>
+                <span class="summary-item-value" id="summary-val-scorer">Mbappé</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-item-label">MVP del Torneo:</span>
+                <span class="summary-item-value" id="summary-val-mvp">Yamal</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-item-label">Predicción Goles Totales:</span>
+                <span class="summary-item-value" id="summary-val-goals">164 goles</span>
+              </div>
+            </div>
+          </div>
+
+          <p style="text-align: left; font-size: 0.9rem; margin-bottom: 8px; font-weight: 600; color: var(--accent-gold);">
+            Código único de tu porra (Copia y envíaselo al organizador):
+          </p>
+          <div class="code-output-box" id="bet-code-output">CÓDIGO DE APUESTA GENERADO</div>
+          
+          <div class="share-action-buttons">
+            <button class="btn btn-primary" onclick="copyBetCodeToClipboard()">
+              📋 Copiar Código al Portapapeles
+            </button>
+            <button class="btn whatsapp-btn" id="btn-share-whatsapp" onclick="shareOnWhatsApp()">
+              💬 Enviar Apuesta por WhatsApp al Admin
+            </button>
+            <button class="btn btn-secondary" onclick="downloadBetJSON()">
+              💾 Descargar Archivo de Apuesta (.json)
+            </button>
+            <button class="btn btn-secondary" style="margin-top: 15px;" onclick="resetPredictorForm()">
+              🔄 Crear Otra Apuesta Nueva
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- SECTION 2: LEADERBOARD & ADMIN DASHBOARD -->
+    <section id="section-leaderboard" class="app-section">
+      
+      <!-- Admin Mode Toggle -->
+      <div class="admin-toggle-bar">
+        <div>
+          <h3 style="font-family:'Outfit';">Modo Administrador (Resultados Oficiales)</h3>
+          <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">Activa esta opción para configurar el marcador real y calcular los puntos de todos.</p>
+        </div>
+        <label class="switch-control">
+          <input type="checkbox" id="checkbox-admin-mode" onchange="toggleAdminMode()">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <!-- Quick Action Dashboard Controls -->
+      <div class="dashboard-controls">
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="openImportModal()">
+            📥 Importar Apuesta de Jugador
+          </button>
+          <button class="btn btn-secondary" onclick="downloadBackupJSON()">
+            💾 Exportar Todo (Backup)
+          </button>
+          <button class="btn btn-secondary" onclick="triggerFileInput()">
+            📂 Cargar Backup
+          </button>
+          <input type="file" id="file-backup-input" style="display:none;" onchange="importBackupJSON(event)">
+        </div>
+        
+        <input type="text" id="leaderboard-search" class="search-input" placeholder="🔍 Buscar por nombre..." oninput="renderLeaderboardTable()">
+      </div>
+
+      <!-- Scoreboard config alert when Admin Mode is ON -->
+      <div class="alert alert-warning" id="admin-mode-warning-alert" style="display:none;">
+        <strong>⚠️ Modo Administrador Activo:</strong> Los cambios que realices en la pestaña <strong>"Crear mi Porra"</strong> representarán ahora los <strong>resultados reales</strong> del Mundial. Los puntos de los jugadores se recalcularán automáticamente basándose en dichos resultados.
+      </div>
+
+      <!-- API Sync Dashboard Card -->
+      <div class="glass-card" id="admin-sync-card" style="display:none; padding:15px; margin-bottom:20px; border: 1px solid rgba(255, 215, 0, 0.15);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px;">
+          <div>
+            <h4 style="font-family:'Outfit'; color:var(--accent-gold); margin:0 0 5px 0; display:flex; align-items:center; gap:8px;">
+              🌐 Sincronización con API del Mundial 2026
+            </h4>
+            <p style="font-size:0.8rem; color:var(--text-secondary); margin:0;" id="admin-sync-status-text">
+              Estado: Conectado a la API. Los resultados se actualizan automáticamente.
+            </p>
+          </div>
+          <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+            <label class="switch-control" style="font-size:0.8rem; display:flex; align-items:center; gap:8px; width:auto; cursor:pointer; margin:0;">
+              <span style="color:var(--text-secondary);">Sync Auto:</span>
+              <input type="checkbox" id="checkbox-auto-sync" onchange="toggleAutoSync(this)">
+              <span class="slider"></span>
+            </label>
+            <button class="btn btn-primary" style="padding:6px 12px; font-size:0.8rem;" onclick="forceSyncResults()">
+              🔄 Sincronizar Ahora
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leaderboard glass card -->
+      <div class="glass-card" style="padding: 10px;">
+        <div class="table-container">
+          <table class="leaderboard-table" id="leaderboard-table-el">
+            <thead>
+              <tr>
+                <th style="width: 70px; text-align: center;">Pos.</th>
+                <th>Participante</th>
+                <th>Contacto</th>
+                <th style="text-align: center;">Pago</th>
+                <th style="text-align: center;">Campeón Pronostico</th>
+                <th style="text-align: center;">Puntos</th>
+                <th style="width: 120px; text-align: center;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-tbody">
+              <!-- Dynamically populated in app.js -->
+            </tbody>
+          </table>
+        </div>
+        
+        <div id="leaderboard-empty-state" class="empty-state">
+          <div class="empty-state-icon">👥</div>
+          <h3>No hay participantes registrados</h3>
+          <p style="margin-top: 8px;">Usa el botón "Importar Apuesta de Jugador" para añadir participantes pegando los códigos que te envíen.</p>
+        </div>
+      </div>
+
+      <!-- Reset data securely & password management -->
+      <div style="text-align:right; margin-top:20px; display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap;">
+        <button class="btn btn-secondary" style="border-color: var(--accent-gold); color: var(--accent-gold);" onclick="changeAdminPassword()">
+          🔑 Cambiar Contraseña Admin
+        </button>
+        <button class="btn btn-secondary" style="border-color: rgba(239, 68, 68, 0.3); color: var(--accent-red);" onclick="clearAllSystemData()">
+          🗑️ Restablecer y Borrar Toda la Base de Datos
+        </button>
+      </div>
+
+    </section>
+
+
+    <!-- SECTION 3: RULES AND DETAILS -->
+    <section id="section-rules" class="app-section">
+      
+      <div class="glass-card">
+        <h2 class="section-title">Reglas de la Porra & Sistema de Puntuación</h2>
+        <p class="section-desc">Entiende cómo funciona la puntuación de las apuestas para liderar la tabla de posiciones.</p>
+        
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+          <div>
+            <h3 style="color: var(--accent-gold); margin-bottom: 8px; font-family:'Outfit';">⚽ Fase de Grupos</h3>
+            <ul class="rules-list">
+              <li><strong>Clasificado Correcto:</strong> 3 puntos por cada equipo que pronostiques que pasa de ronda (1º o 2º) y efectivamente clasifique, sin importar la posición exacta.</li>
+              <li><strong>Posición Exacta:</strong> 2 puntos adicionales (5 en total) si aciertas exactamente si pasa como 1º o 2º de su grupo.</li>
+              <li><strong>Mejores Terceros:</strong> 3 puntos por cada equipo que clasifique de repesca (Wildcard) que aciertes.</li>
+            </ul>
+          </div>
+          
+          <div>
+            <h3 style="color: var(--accent-gold); margin-bottom: 8px; font-family:'Outfit';">🏆 Fase de Eliminatorias (Playoffs)</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 8px;">En las eliminatorias directas, se puntúa por acertar los equipos que avanzan de ronda en tu árbol predictivo:</p>
+            <ul class="rules-list">
+              <li><strong>Acierto de Octavofinalista (Ganador de R32):</strong> +5 puntos.</li>
+              <li><strong>Acierto de Cuartofinalista (Ganador de Octavos):</strong> +8 puntos.</li>
+              <li><strong>Acierto de Semifinalista:</strong> +12 puntos.</li>
+              <li><strong>Acierto de Finalista:</strong> +18 puntos.</li>
+              <li><strong>Acierto de Campeón del Mundo:</strong> +25 puntos.</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 style="color: var(--accent-gold); margin-bottom: 8px; font-family:'Outfit';">✨ Puntos Extra</h3>
+            <ul class="rules-list">
+              <li><strong>Acierto de Máximo Goleador (Bota de Oro):</strong> +10 puntos.</li>
+              <li><strong>Acierto de MVP (Balón de Oro):</strong> +10 puntos.</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 style="color: var(--accent-gold); margin-bottom: 8px; font-family:'Outfit';">⚖️ Criterio de Desempate</h3>
+            <p>En caso de empate en la puntuación general, el ganador se determinará de la siguiente forma:</p>
+            <ul class="rules-list">
+              <li>1. Mayor cantidad de aciertos en el campeón del mundo.</li>
+              <li>2. Mayor cantidad de aciertos en el árbol de eliminatorias.</li>
+              <li>3. Proximidad al número total de goles reales marcados durante todo el Mundial (criterio absoluto).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- MODALS -->
+
+  <!-- Modal 1: Import Player Bet Code -->
+  <div class="modal" id="modal-import-bet">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="font-family:'Outfit';">📥 Importar Apuesta de Participante</h3>
+        <button class="modal-close" onclick="closeModal('modal-import-bet')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="import-box">
+          <p style="font-size:0.9rem; color:var(--text-secondary);">
+            Pega el código de texto copiado de WhatsApp o del portapapeles del participante en la caja de abajo.
+          </p>
+          <textarea class="import-textarea" id="textarea-import-code" placeholder="Pega el código aquí..."></textarea>
+          
+          <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+            <button class="btn btn-secondary" onclick="closeModal('modal-import-bet')">Cancelar</button>
+            <button class="btn btn-primary" onclick="submitImportedCode()">Importar Apuesta</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: View Participant Prediction Detail (Read-Only) -->
+  <div class="modal" id="modal-view-prediction">
+    <div class="modal-content" style="max-width: 850px;">
+      <div class="modal-header">
+        <h3 id="modal-view-title" style="font-family:'Outfit';">Apuesta de [Nombre]</h3>
+        <button class="modal-close" onclick="closeModal('modal-view-prediction')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info" style="margin-bottom:20px; font-weight:600;" id="modal-view-score-banner">
+          Puntuación Actual: 0 puntos
+        </div>
+        
+        <!-- Tabs within view prediction -->
+        <div class="bracket-navigation" style="margin-bottom:20px;">
+          <button class="bracket-tab-btn active" id="view-tab-btn-groups" onclick="switchViewDetailTab('groups')">Fase de Grupos</button>
+          <button class="bracket-tab-btn" id="view-tab-btn-bracket" onclick="switchViewDetailTab('bracket')">Árbol de Eliminatorias</button>
+          <button class="bracket-tab-btn" id="view-tab-btn-extras" onclick="switchViewDetailTab('extras')">Otros Datos</button>
+        </div>
+
+        <div id="view-detail-groups" class="view-detail-panel">
+          <div class="groups-grid" id="view-modal-groups-container">
+            <!-- Dynamic read-only group cards -->
+          </div>
+        </div>
+
+        <div id="view-detail-bracket" class="view-detail-panel" style="display:none;">
+          <div class="bracket-navigation" id="view-modal-bracket-tabs-nav" style="justify-content:flex-start;">
+            <button class="bracket-tab-btn active" onclick="switchViewBracketTab('r32')">R32</button>
+            <button class="bracket-tab-btn" onclick="switchViewBracketTab('r16')">Octavos</button>
+            <button class="bracket-tab-btn" onclick="switchViewBracketTab('qf')">Cuartos</button>
+            <button class="bracket-tab-btn" onclick="switchViewBracketTab('sf')">Semis y Final</button>
+          </div>
+          
+          <div class="bracket-viewport">
+            <div id="view-modal-bracket-r32" class="view-bracket-panel active">
+              <div class="bracket-matches-list" id="view-matches-r32"></div>
+            </div>
+            <div id="view-modal-bracket-r16" class="view-bracket-panel" style="display:none;">
+              <div class="bracket-matches-list" id="view-matches-r16"></div>
+            </div>
+            <div id="view-modal-bracket-qf" class="view-bracket-panel" style="display:none;">
+              <div class="bracket-matches-list" id="view-matches-qf"></div>
+            </div>
+            <div id="view-modal-bracket-sf" class="view-bracket-panel" style="display:none;">
+              <div class="bracket-matches-list" id="view-matches-sf"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="view-detail-extras" class="view-detail-panel" style="display:none;">
+          <div class="summary-prediction-details" style="max-width: 500px; margin: 0 auto;" id="view-modal-extras-container">
+            <!-- Dynamic read-only extras -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Script logic -->
+  <script src="app.js"></script>
+</body>
+</html>

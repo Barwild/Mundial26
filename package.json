@@ -1,0 +1,15 @@
+{
+  "name": "porra-mundial-2026",
+  "version": "1.0.0",
+  "description": "Servidor local y base de datos para la porra del Mundial 2026",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.11.5"
+  },
+  "author": "Antigravity Pair Programmer",
+  "license": "ISC"
+}
