@@ -293,14 +293,13 @@ function nextStep(step) {
   // Validation for Step 1
   if (step === 2) {
     const name = document.getElementById('input-user-name').value.trim();
-    const contact = document.getElementById('input-user-contact').value.trim();
-    if (!adminMode && (name === '' || contact === '')) {
-      alert('Por favor, completa tu nombre y contacto para continuar.');
+    if (!adminMode && name === '') {
+      alert('Por favor, completa tu nombre para continuar.');
       return;
     }
     // Save to state
     userPredictorState.name = name;
-    userPredictorState.contact = contact;
+    userPredictorState.contact = name; // set contact equal to name
     saveUserDraft();
   }
 
@@ -1720,9 +1719,6 @@ function renderLeaderboardTable() {
             <div class="p-name">${p.name}</div>
           </div>
         </div>
-      </td>
-      <td>
-        <span class="p-phone">${p.contact}</span>
       </td>
       <td style="text-align:center;">
         <span class="payment-badge ${p.paid ? 'badge-paid' : 'badge-pending'}" onclick="togglePaidStatus(${idx})">
