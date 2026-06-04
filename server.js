@@ -545,7 +545,9 @@ app.get('/api/results', (req, res) => {
   const db = readDB();
   res.json({
     ...db.actualResults,
-    autoSync: db.autoSync !== false
+    autoSync: db.autoSync !== false,
+    dbConnected: pgClient !== null,
+    dbUrlPresent: !!process.env.DATABASE_URL || !!process.env.POSTGRES_URL
   });
 });
 

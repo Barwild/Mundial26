@@ -161,9 +161,9 @@ async function fetchServerData() {
       updateSyncDisplay();
       
       // Update DB status badge
-      updateDbStatusBadge(data.dbConnected, false);
+      updateDbStatusBadge(data.dbConnected, false, data.dbUrlPresent);
     } else {
-      updateDbStatusBadge(false, true);
+      updateDbStatusBadge(false, true, false);
     }
     
     const resParticipants = await fetch('/api/participants');
@@ -173,11 +173,11 @@ async function fetchServerData() {
     }
   } catch (err) {
     console.warn('Servidor central no disponible. Corriendo en modo local/offline.');
-    updateDbStatusBadge(false, true);
+    updateDbStatusBadge(false, true, false);
   }
 }
 
-function updateDbStatusBadge(connected, serverDown) {
+function updateDbStatusBadge(connected, serverDown, dbUrlPresent) {
   const badge = document.getElementById('db-status-badge');
   if (!badge) return;
   
@@ -191,11 +191,16 @@ function updateDbStatusBadge(connected, serverDown) {
     badge.style.background = 'rgba(40, 167, 69, 0.1)';
     badge.style.color = '#28a745';
     badge.style.borderColor = 'rgba(40, 167, 69, 0.2)';
-  } else {
-    badge.innerText = '⚠️ Almacenamiento Temporal (Conecta la BD)';
+  } else if (!dbUrlPresent) {
+    badge.innerText = '⚠️ Almacenamiento Temporal (Falta vincular la BD en Vercel)';
     badge.style.background = 'rgba(255, 193, 7, 0.1)';
     badge.style.color = '#ffc107';
     badge.style.borderColor = 'rgba(255, 193, 7, 0.2)';
+  } else {
+    badge.innerText = '⚠️ Error de Conexión (La BD no responde)';
+    badge.style.background = 'rgba(220, 53, 69, 0.1)';
+    badge.style.color = '#dc3545';
+    badge.style.borderColor = 'rgba(220, 53, 69, 0.2)';
   }
 }
 
