@@ -9,7 +9,7 @@ let lastDbError = null;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DB_FILE = path.join(__dirname, 'data.json');
+const DB_FILE = process.env.VERCEL || process.env.VERCEL_ENV ? '/tmp/data.json' : path.join(__dirname, 'data.json');
 // Middleware to parse JSON bodies
 app.use(express.json());
 
