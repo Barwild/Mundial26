@@ -159,6 +159,11 @@ async function fetchServerData() {
       actualResults = data;
       localStorage.setItem('porra_actual_results', JSON.stringify(actualResults));
       updateSyncDisplay();
+      
+      // Update DB status badge
+      updateDbStatusBadge(data.dbConnected, false);
+    } else {
+      updateDbStatusBadge(false, true);
     }
     
     const resParticipants = await fetch('/api/participants');
@@ -168,6 +173,29 @@ async function fetchServerData() {
     }
   } catch (err) {
     console.warn('Servidor central no disponible. Corriendo en modo local/offline.');
+    updateDbStatusBadge(false, true);
+  }
+}
+
+function updateDbStatusBadge(connected, serverDown) {
+  const badge = document.getElementById('db-status-badge');
+  if (!badge) return;
+  
+  if (serverDown) {
+    badge.innerText = '🔴 Servidor Desconectado (Offline)';
+    badge.style.background = 'rgba(220, 53, 69, 0.1)';
+    badge.style.color = '#dc3545';
+    badge.style.borderColor = 'rgba(220, 53, 69, 0.2)';
+  } else if (connected) {
+    badge.innerText = '🟢 Base de datos: Conectada (Persistente)';
+    badge.style.background = 'rgba(40, 167, 69, 0.1)';
+    badge.style.color = '#28a745';
+    badge.style.borderColor = 'rgba(40, 167, 69, 0.2)';
+  } else {
+    badge.innerText = '⚠️ Almacenamiento Temporal (Conecta la BD)';
+    badge.style.background = 'rgba(255, 193, 7, 0.1)';
+    badge.style.color = '#ffc107';
+    badge.style.borderColor = 'rgba(255, 193, 7, 0.2)';
   }
 }
 
