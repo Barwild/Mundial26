@@ -904,30 +904,6 @@ async function generateAndShowSummary() {
   
   saveUserDraft();
   
-  // Compute final elements
-  const champion = bracketTeamsCache.champion;
-  const runnerUp = getRunnerUp();
-  
-  document.getElementById('summary-lbl-name').innerText = state.name || 'Sin nombre';
-  document.getElementById('summary-lbl-contact').innerText = state.contact || 'Sin contacto';
-  document.getElementById('summary-badge-avatar').innerText = state.avatar || '⚽';
-  
-  document.getElementById('summary-val-champion').innerHTML = champion 
-    ? `<span class="team-flag">${champion.flag}</span> ${champion.name}` 
-    : 'No definido';
-  
-  document.getElementById('summary-val-runnerup').innerHTML = runnerUp 
-    ? `<span class="team-flag">${runnerUp.flag}</span> ${runnerUp.name}` 
-    : 'No definido';
-    
-  document.getElementById('summary-val-scorer').innerText = state.extras.scorer || 'Ninguno';
-  document.getElementById('summary-val-mvp').innerText = state.extras.mvp || 'Ninguno';
-  document.getElementById('summary-val-goals').innerText = state.extras.goals ? `${state.extras.goals} goles` : 'Ninguno';
-  
-  // Generate bet code as backup
-  const code = encodeBet(state);
-  document.getElementById('bet-code-output').innerText = code;
-  
   // Submit to Server Database
   let submittedOk = false;
   try {
@@ -946,14 +922,274 @@ async function generateAndShowSummary() {
     console.error('Error al conectar con el servidor:', err);
   }
 
-  if (submittedOk) {
-    alert('¡Tu apuesta ha sido registrada automáticamente en la clasificación central!');
-  } else {
-    alert('⚠️ No se pudo enviar tu apuesta al servidor central (offline). Por favor, copia el código Base64 generado y envíaselo al administrador por WhatsApp para que la registre manualmente.');
+  // Generate and download PDF receipt automatically
+  try {
+    generatePDFReceipt(state);
+  } catch (pdfErr) {
+    console.error('Error generando PDF, cayendo a JSON:', pdfErr);
+    downloadBetJSON();
   }
 
-  // Move to Step 6
-  nextStep(6);
+  if (submittedOk) {
+    alert('¡Tu apuesta ha sido registrada con éxito!\n\nSe ha generado y descargado tu recibo oficial en PDF.\nAhora te redirigimos a la pestaña de Clasificación.');
+    
+    // Clean draft on success
+    localStorage.removeItem('porra_user_draft');
+    
+    // Reset predictor state so it's fresh for the next person
+    userPredictorState = createEmptyState();
+    populateFormFields();
+    recalculateBracketData();
+    nextStep(1);
+    updateAndRenderAll();
+    
+    // Go to classification tab
+    switchMainTab('leaderboard');
+  } else {
+    alert('⚠️ No se pudo registrar tu apuesta en el servidor central (offline).\n\nSin embargo, se ha descargado tu recibo en PDF con tus pronósticos y código de validación. Por favor, envíaselo al administrador por WhatsApp para que la registre manualmente.');
+    
+    // Switch to classification tab anyway so they can see the overall board
+    switchMainTab('leaderboard');
+  }
+}
+
+// Generate PDF receipt for a state object (player or admin results)
+function generatePDFReceipt(stateObj) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('p', 'mm', 'a4');
+  
+  doc.setFont('helvetica', 'normal');
+  
+  // Colors (Deep Soccer Green and Gold)
+  const primaryColor = [11, 60, 43];
+  const accentColor = [212, 175, 55];
+  const textColor = [33, 37, 41];
+  const mutedTextColor = [108, 117, 125];
+  
+  // 1. Title Banner
+  doc.setFillColor(...primaryColor);
+  doc.rect(10, 10, 190, 22, 'F');
+  
+  doc.setFillColor(...accentColor);
+  doc.rect(10, 32, 190, 1.5, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.text('LA PORRA DEL MUNDIAL 2026', 105, 20, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text('RECIBO OFICIAL DE PRONOSTICOS', 105, 27, { align: 'center' });
+  
+  // 2. Player Info Block
+  doc.setTextColor(...textColor);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.text('DATOS DEL PARTICIPANTE', 12, 43);
+  
+  doc.setDrawColor(220, 224, 230);
+  doc.setFillColor(248, 249, 250);
+  doc.rect(10, 46, 190, 24, 'FD');
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.text(`Nombre: ${stateObj.name || 'Invitado'}`, 15, 53);
+  doc.text(`Contacto: ${stateObj.contact || 'No especificado'}`, 15, 60);
+  doc.text(`Fecha: ${new Date().toLocaleString('es-ES')}`, 15, 66);
+  
+  const statusStr = stateObj.paid ? 'PAGADO (Confirmado)' : 'PENDIENTE DE PAGO';
+  // Strip emojis from avatar if it contains any non-alphanumeric, print raw char otherwise
+  let avatarChar = stateObj.avatar || '⚽';
+  doc.text(`Icono: ${avatarChar}`, 115, 53);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Estado: ${statusStr}`, 115, 60);
+  
+  // 3. Highlight Core Predictions
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(...primaryColor);
+  doc.text('PRONOSTICOS PRINCIPALES', 12, 79);
+  
+  doc.setDrawColor(...accentColor);
+  doc.setLineWidth(0.4);
+  doc.line(10, 81, 200, 81);
+  
+  // Get Champion
+  const champId = getChampionForState(stateObj);
+  const championName = champId && TEAMS[champId] ? TEAMS[champId].name : 'Por determinar';
+  
+  // Get Runner-up
+  let runnerUpName = 'Por determinar';
+  const finalists = getTeamsAdvancingToRound(stateObj, 'sf');
+  if (stateObj.bracket.f !== null && finalists[0] && finalists[1]) {
+    const rIdx = 1 - stateObj.bracket.f;
+    const rId = finalists[rIdx];
+    if (rId && TEAMS[rId]) runnerUpName = TEAMS[rId].name;
+  }
+  
+  doc.setTextColor(...textColor);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Campeón del Mundo:', 15, 88);
+  doc.setFont('helvetica', 'normal');
+  doc.text(championName, 53, 88);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Subcampeón:', 15, 94);
+  doc.setFont('helvetica', 'normal');
+  doc.text(runnerUpName, 53, 94);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Bota de Oro:', 115, 88);
+  doc.setFont('helvetica', 'normal');
+  doc.text(stateObj.extras.scorer || 'No indicado', 145, 88);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Balón de Oro (MVP):', 115, 94);
+  doc.setFont('helvetica', 'normal');
+  doc.text(stateObj.extras.mvp || 'No indicado', 145, 94);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Goles Totales:', 115, 100);
+  doc.setFont('helvetica', 'normal');
+  doc.text(stateObj.extras.goals ? `${stateObj.extras.goals} goles` : 'No indicado', 145, 100);
+  
+  // 4. Group Phase Predictions
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(...primaryColor);
+  doc.text('1. FASE DE GRUPOS (ORDEN DE PRONOSTICO)', 12, 112);
+  doc.setDrawColor(220, 224, 230);
+  doc.line(10, 114, 200, 114);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...textColor);
+  
+  const groupsList = Object.keys(stateObj.groups).sort();
+  let yStart = 120;
+  groupsList.forEach((groupKey, idx) => {
+    const col = idx < 6 ? 0 : 1;
+    const row = idx < 6 ? idx : idx - 6;
+    
+    const x = col === 0 ? 15 : 110;
+    const y = yStart + (row * 6.5);
+    
+    const teamCodes = stateObj.groups[groupKey];
+    const predictionStr = teamCodes.join(' > ');
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Grupo ${groupKey}:`, x, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(predictionStr, x + 16, y);
+  });
+  
+  // Mejores Terceros
+  doc.setFont('helvetica', 'bold');
+  doc.text('Mejores Terceros (Pasan a R32):', 15, yStart + 42);
+  doc.setFont('helvetica', 'normal');
+  const wildcardsStr = stateObj.wildcards && stateObj.wildcards.length > 0 ? stateObj.wildcards.join(', ') : 'Ninguno';
+  doc.text(wildcardsStr, 70, yStart + 42);
+  
+  // 5. Bracket Predictions
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(...primaryColor);
+  doc.text('2. ELIMINATORIAS DIRECTAS (BRACKET)', 12, 174);
+  doc.line(10, 176, 200, 176);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...textColor);
+  
+  const r16Teams = getTeamsAdvancingToRound(stateObj, 'r32');
+  const qfTeams = getTeamsAdvancingToRound(stateObj, 'r16');
+  const sfTeams = getTeamsAdvancingToRound(stateObj, 'qf');
+  const finalTeams = getTeamsAdvancingToRound(stateObj, 'sf');
+  
+  const formatTeamsList = (arr) => arr.filter(Boolean).join(', ');
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Octavos de Final (R16):', 15, 182);
+  doc.setFont('helvetica', 'normal');
+  const r16Text = formatTeamsList(r16Teams) || 'Ninguno';
+  const r16Lines = doc.splitTextToSize(r16Text, 140);
+  doc.text(r16Lines, 55, 182);
+  
+  let currentY = 182 + (r16Lines.length * 4.5);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Cuartos de Final (QF):', 15, currentY);
+  doc.setFont('helvetica', 'normal');
+  const qfText = formatTeamsList(qfTeams) || 'Ninguno';
+  const qfLines = doc.splitTextToSize(qfText, 140);
+  doc.text(qfLines, 55, currentY);
+  
+  currentY += qfLines.length * 4.5;
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Semifinales (SF):', 15, currentY);
+  doc.setFont('helvetica', 'normal');
+  const sfText = formatTeamsList(sfTeams) || 'Ninguno';
+  const sfLines = doc.splitTextToSize(sfText, 140);
+  doc.text(sfLines, 55, currentY);
+  
+  currentY += sfLines.length * 4.5;
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Finalistas (F):', 15, currentY);
+  doc.setFont('helvetica', 'normal');
+  const fText = formatTeamsList(finalTeams) || 'Ninguno';
+  doc.text(fText, 55, currentY);
+  
+  // 6. Verification Hash
+  const validationCode = encodeBet(stateObj);
+  
+  doc.setTextColor(...mutedTextColor);
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CÓDIGO DE VALIDACIÓN TÉCNICA (SOPORTE Y TRANSMISIÓN MANUAL):', 15, 260);
+  
+  doc.setFont('helvetica', 'normal');
+  const validationLines = doc.splitTextToSize(validationCode, 180);
+  doc.text(validationLines, 15, 264);
+  
+  // Footer
+  doc.setDrawColor(220, 224, 230);
+  doc.line(10, 276, 200, 276);
+  doc.setFontSize(8);
+  doc.text('Gracias por participar en la Porra del Mundial 2026. Conserve este recibo.', 105, 281, { align: 'center' });
+  doc.text('Este comprobante garantiza la validez de sus pronósticos registrados.', 105, 285, { align: 'center' });
+  
+  // Save PDF
+  const nameClean = (stateObj.name || 'sin_nombre').replace(/\s+/g, '_');
+  const filename = `recibo_porra_${nameClean}.pdf`;
+  doc.save(filename);
+}
+
+// Download PDF of the currently viewed player in classification detail modal
+function downloadCurrentPlayerPDF() {
+  if (viewPlayerPredictionState) {
+    try {
+      generatePDFReceipt(viewPlayerPredictionState);
+    } catch (err) {
+      console.error('Error generando PDF del modal:', err);
+      alert('Error al generar el archivo PDF. Puedes ver la apuesta en pantalla.');
+    }
+  } else {
+    alert('No hay ninguna apuesta seleccionada.');
+  }
+}
+
+// Download PDF for the user's latest draft prediction (Step 6 fallback)
+function downloadLastBetPDF() {
+  if (userPredictorState && userPredictorState.name) {
+    generatePDFReceipt(userPredictorState);
+  } else {
+    alert('No hay ninguna apuesta registrada en este navegador para descargar.');
+  }
 }
 
 // Helper to retrieve runner-up

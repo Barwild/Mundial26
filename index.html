@@ -283,20 +283,9 @@
             </div>
           </div>
 
-          <p style="text-align: left; font-size: 0.9rem; margin-bottom: 8px; font-weight: 600; color: var(--accent-gold);">
-            Código único de tu porra (Copia y envíaselo al organizador):
-          </p>
-          <div class="code-output-box" id="bet-code-output">CÓDIGO DE APUESTA GENERADO</div>
-          
-          <div class="share-action-buttons">
-            <button class="btn btn-primary" onclick="copyBetCodeToClipboard()">
-              📋 Copiar Código al Portapapeles
-            </button>
-            <button class="btn whatsapp-btn" id="btn-share-whatsapp" onclick="shareOnWhatsApp()">
-              💬 Enviar Apuesta por WhatsApp al Admin
-            </button>
-            <button class="btn btn-secondary" onclick="downloadBetJSON()">
-              💾 Descargar Archivo de Apuesta (.json)
+          <div class="share-action-buttons" style="margin-top: 25px;">
+            <button class="btn btn-primary" onclick="downloadLastBetPDF()">
+              📄 Descargar Recibo PDF
             </button>
             <button class="btn btn-secondary" style="margin-top: 15px;" onclick="resetPredictorForm()">
               🔄 Crear Otra Apuesta Nueva
@@ -544,11 +533,18 @@
           </div>
         </div>
 
+        <div style="margin-top:20px; text-align:center; padding-top:15px; border-top:1px solid rgba(255,255,255,0.08);">
+          <button class="btn btn-primary" onclick="downloadCurrentPlayerPDF()">
+            📄 Descargar Recibo PDF de esta Apuesta
+          </button>
+        </div>
+
       </div>
     </div>
   </div>
 
   <!-- Script logic -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
