@@ -57,9 +57,9 @@ const INITIAL_DB = {
 
 // Initialize DB file if not exists
 async function initDB() {
-  const dbUrl = process.env.DATABASE_URL;
+  const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
   if (dbUrl) {
-    console.log('🔌 DATABASE_URL detectada. Configurando conexión con PostgreSQL...');
+    console.log('🔌 Base de datos detectada (DATABASE_URL o POSTGRES_URL). Configurando conexión con PostgreSQL...');
     try {
       pgClient = new Client({
         connectionString: dbUrl,

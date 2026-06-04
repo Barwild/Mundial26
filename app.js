@@ -1804,7 +1804,7 @@ function openImportModal() {
   openModal('modal-import-bet');
 }
 
-function submitImportedCode() {
+async function submitImportedCode() {
   const code = document.getElementById('textarea-import-code').value.trim();
   if (!code) {
     alert('Por favor, pega un código de apuesta.');
@@ -1819,31 +1819,50 @@ function submitImportedCode() {
   
   // Check if contact already exists
   const existingIdx = participants.findIndex(p => p.contact === betObj.contact);
+  let preservePaid = false;
   if (existingIdx > -1) {
-    if (confirm(`El participante con el contacto ${betObj.contact} ya existe (${participants[existingIdx].name}). ¿Deseas sobreescribir su apuesta?`)) {
-      participants[existingIdx] = {
-        ...betObj,
-        paid: participants[existingIdx].paid, // preserve paid status
-        score: 0
-      };
-    } else {
+    if (!confirm(`El participante con el contacto ${betObj.contact} ya existe (${participants[existingIdx].name}). ¿Deseas sobreescribir su apuesta?`)) {
       closeModal('modal-import-bet');
       return;
     }
-  } else {
-    // Add new participant
-    participants.push({
-      ...betObj,
-      paid: false,
-      score: 0
-    });
+    preservePaid = participants[existingIdx].paid;
   }
   
-  // Recalculate scores and render
-  calculatePlayerScores();
-  renderLeaderboardTable();
-  closeModal('modal-import-bet');
-  alert(`¡Apuesta de ${betObj.name} importada correctamente!`);
+  // Submit to Server Database
+  try {
+    const response = await fetch('/api/participants', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(betObj)
+    });
+    
+    if (response.ok) {
+      // Reload participants list from server to be in sync
+      const res = await fetch('/api/participants');
+      if (res.ok) {
+        participants = await res.json();
+      } else {
+        // Fallback local update
+        if (existingIdx > -1) {
+          participants[existingIdx] = { ...betObj, paid: preservePaid, score: 0 };
+        } else {
+          participants.push({ ...betObj, paid: false, score: 0 });
+        }
+      }
+      
+      calculatePlayerScores();
+      renderLeaderboardTable();
+      closeModal('modal-import-bet');
+      alert(`¡Apuesta de ${betObj.name} importada y guardada en el servidor con éxito!`);
+    } else {
+      alert('⚠️ Hubo un error en el servidor al intentar guardar la apuesta importada.');
+    }
+  } catch (err) {
+    console.error('Error al conectar con el servidor:', err);
+    alert('⚠️ No se pudo conectar con el servidor para registrar la apuesta importada.');
+  }
 }
 
 // 2. View Player Prediction Modal
