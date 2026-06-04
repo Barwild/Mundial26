@@ -161,9 +161,9 @@ async function fetchServerData() {
       updateSyncDisplay();
       
       // Update DB status badge
-      updateDbStatusBadge(data.dbConnected, false, data.dbUrlPresent);
+      updateDbStatusBadge(data.dbConnected, false, data.dbUrlPresent, data.dbError);
     } else {
-      updateDbStatusBadge(false, true, false);
+      updateDbStatusBadge(false, true, false, null);
     }
     
     const resParticipants = await fetch('/api/participants');
@@ -173,11 +173,11 @@ async function fetchServerData() {
     }
   } catch (err) {
     console.warn('Servidor central no disponible. Corriendo en modo local/offline.');
-    updateDbStatusBadge(false, true, false);
+    updateDbStatusBadge(false, true, false, null);
   }
 }
 
-function updateDbStatusBadge(connected, serverDown, dbUrlPresent) {
+function updateDbStatusBadge(connected, serverDown, dbUrlPresent, dbError) {
   const badge = document.getElementById('db-status-badge');
   if (!badge) return;
   
@@ -197,7 +197,8 @@ function updateDbStatusBadge(connected, serverDown, dbUrlPresent) {
     badge.style.color = '#ffc107';
     badge.style.borderColor = 'rgba(255, 193, 7, 0.2)';
   } else {
-    badge.innerText = '⚠️ Error de Conexión (La BD no responde)';
+    const errorMsg = dbError ? `: ${dbError}` : '';
+    badge.innerText = `⚠️ Error de Conexión (La BD no responde${errorMsg})`;
     badge.style.background = 'rgba(220, 53, 69, 0.1)';
     badge.style.color = '#dc3545';
     badge.style.borderColor = 'rgba(220, 53, 69, 0.2)';

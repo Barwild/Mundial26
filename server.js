@@ -5,6 +5,7 @@ const { Client } = require('pg');
 
 let dbMemory = null;
 let pgClient = null;
+let lastDbError = null;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -88,6 +89,7 @@ async function initDB() {
       return;
     } catch (err) {
       console.error('❌ Error de conexión o inicialización de PostgreSQL:', err.message);
+      lastDbError = err.message;
       console.log('⚠️ Rebotando a base de datos de archivos local (data.json)...');
       pgClient = null;
     }
@@ -547,7 +549,8 @@ app.get('/api/results', (req, res) => {
     ...db.actualResults,
     autoSync: db.autoSync !== false,
     dbConnected: pgClient !== null,
-    dbUrlPresent: !!process.env.DATABASE_URL || !!process.env.POSTGRES_URL
+    dbUrlPresent: !!process.env.DATABASE_URL || !!process.env.POSTGRES_URL,
+    dbError: lastDbError
   });
 });
 
