@@ -1871,6 +1871,15 @@ async function togglePaidStatus(index) {
     } else {
       const errData = await res.json();
       alert(`Error: ${errData.error}`);
+      if (res.status === 401) {
+        localStorage.removeItem('porra_admin_password');
+        adminPassword = '';
+        const cb = document.getElementById('checkbox-admin-mode');
+        if (cb) {
+          cb.checked = false;
+          toggleAdminMode();
+        }
+      }
       return;
     }
   } catch (err) {
@@ -1911,6 +1920,15 @@ async function deleteParticipant(index) {
     } else {
       const errData = await res.json();
       alert(`Error: ${errData.error}`);
+      if (res.status === 401) {
+        localStorage.removeItem('porra_admin_password');
+        adminPassword = '';
+        const cb = document.getElementById('checkbox-admin-mode');
+        if (cb) {
+          cb.checked = false;
+          toggleAdminMode();
+        }
+      }
       return;
     }
   } catch (err) {
@@ -2465,9 +2483,14 @@ async function clearAllSystemData() {
     if (res.ok) {
       onlineSuccess = true;
     } else if (res.status === 401) {
-      alert('Contraseña incorrecta. Se ha restablecido la contraseña del administrador.');
+      alert('Contraseña incorrecta. Se ha limpiado la contraseña guardada.');
       localStorage.removeItem('porra_admin_password');
       adminPassword = '';
+      const cb = document.getElementById('checkbox-admin-mode');
+      if (cb) {
+        cb.checked = false;
+        toggleAdminMode();
+      }
       return;
     } else {
       const errData = await res.json();
