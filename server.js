@@ -678,6 +678,25 @@ app.post('/api/reset', verifyAdmin, async (req, res) => {
   res.json({ success: true, message: 'Base de datos restablecida.' });
 });
 
+// POST restore backup (Admin only)
+app.post('/api/restore', verifyAdmin, async (req, res) => {
+  const backup = req.body;
+  if (!backup || !backup.participants || !Array.isArray(backup.participants)) {
+    return res.status(400).json({ error: 'Formato de backup inválido. Debe contener un array de participantes.' });
+  }
+
+  const db = readDB();
+  db.participants = backup.participants;
+  if (backup.actualResults) {
+    db.actualResults = backup.actualResults;
+  }
+  
+  await writeDB(db);
+  console.log('Copia de seguridad restaurada correctamente.');
+  res.json({ success: true, message: '¡Copia de seguridad restaurada con éxito!' });
+});
+
+
 // Start listening
 initDB().then(() => {
   // Sincronización inicial al arrancar el servidor

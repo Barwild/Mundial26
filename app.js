@@ -2437,20 +2437,55 @@ function importBackupJSON(event) {
   const file = event.target.files[0];
   if (!file) return;
   
+  const fileInput = event.target;
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = async function(e) {
+    fileInput.value = '';
     try {
       const data = JSON.parse(e.target.result);
       if (data.participants && Array.isArray(data.participants)) {
-        participants = data.participants;
-        if (data.actualResults) {
-          actualResults = data.actualResults;
-          localStorage.setItem('porra_actual_results', JSON.stringify(actualResults));
+        if (!adminPassword) {
+          adminPassword = prompt('Introduce la contraseña de administrador para realizar esta acción:') || '';
+          localStorage.setItem('porra_admin_password', adminPassword);
         }
-        
-        calculatePlayerScores();
-        renderLeaderboardTable();
-        alert('¡Base de datos cargada con éxito!');
+
+        try {
+          const res = await fetch('/api/restore', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-admin-password': adminPassword
+            },
+            body: JSON.stringify(data)
+          });
+          
+          if (res.ok) {
+            participants = data.participants;
+            if (data.actualResults) {
+              actualResults = data.actualResults;
+              localStorage.setItem('porra_actual_results', JSON.stringify(actualResults));
+            }
+            
+            calculatePlayerScores();
+            renderLeaderboardTable();
+            alert('¡Copia de seguridad cargada y guardada en el servidor con éxito!');
+          } else if (res.status === 401) {
+            alert('Contraseña incorrecta. Se ha limpiado la contraseña guardada.');
+            localStorage.removeItem('porra_admin_password');
+            adminPassword = '';
+            const cb = document.getElementById('checkbox-admin-mode');
+            if (cb) {
+              cb.checked = false;
+              toggleAdminMode();
+            }
+          } else {
+            const errData = await res.json();
+            alert(`Error: ${errData.error}`);
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Error de red al conectar con el servidor.');
+        }
       } else {
         alert('Formato de archivo inválido.');
       }
@@ -2461,6 +2496,7 @@ function importBackupJSON(event) {
   };
   reader.readAsText(file);
 }
+
 
 async function clearAllSystemData() {
   if (!confirm('🚨 ¡ATENCIÓN! Esto eliminará de forma permanente todos los participantes importados y restablecerá la configuración. ¿Quieres continuar?')) {
