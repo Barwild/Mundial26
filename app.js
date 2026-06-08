@@ -1360,7 +1360,8 @@ function encodeBet(betObj) {
 
 function decodeBet(str) {
   try {
-    let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+    const cleanStr = str.replace(/\s+/g, '');
+    let base64 = cleanStr.replace(/-/g, '+').replace(/_/g, '/');
     while (base64.length % 4) {
       base64 += '=';
     }
