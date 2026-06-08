@@ -148,6 +148,7 @@ async function writeDB(data) {
       await pgClient.query('INSERT INTO mundial_2026_data (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2', ['db', JSON.stringify(data)]);
     } catch (err) {
       console.error('❌ Error persistiendo datos en PostgreSQL:', err.message);
+      throw err; // Propagate error so API requests fail when DB fails to write!
     }
   }
 }
@@ -473,6 +474,23 @@ async function ensureDbInit(req, res, next) {
         dbUrlPresent: true,
         dbError: lastDbError
       });
+    }
+  }
+
+  // Reload the database state from PostgreSQL on every request if pgClient is connected
+  // to avoid serving stale in-memory data in stateless/serverless instances!
+  if (pgClient) {
+    try {
+      const resDb = await pgClient.query('SELECT value FROM mundial_2026_data WHERE key = $1', ['db']);
+      if (resDb.rows.length > 0) {
+        dbMemory = JSON.parse(resDb.rows[0].value);
+        // Also update local copy
+        try {
+          fs.writeFileSync(DB_FILE, JSON.stringify(dbMemory, null, 2), 'utf8');
+        } catch (fsErr) {}
+      }
+    } catch (dbErr) {
+      console.error('❌ Error recargando datos desde PostgreSQL en middleware:', dbErr.message);
     }
   }
 
