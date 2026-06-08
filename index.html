@@ -57,7 +57,25 @@
       <div id="step-1-id" class="step-panel glass-card">
         <h2 class="section-title">Registro de Participante</h2>
         <p class="section-desc">Por favor, introduce tu nombre y datos para registrar tu apuesta en la clasificación del organizador.</p>
-        
+
+        <!-- Load draft / edit existing -->
+        <div class="glass-card" style="margin-bottom: 25px; background: rgba(255, 255, 255, 0.01); border: 1px dashed rgba(255, 215, 0, 0.2); padding: 15px; text-align: center; border-radius: 12px;">
+          <h4 style="font-family:'Outfit'; margin: 0 0 5px 0; color: var(--accent-gold); font-size: 0.95rem; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            🔄 ¿Quieres editar una apuesta existente?
+          </h4>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0 0 12px 0;">Sube el PDF de tu recibo o pega el código de validación para cargar tus pronósticos.</p>
+          <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap; align-items:center;">
+            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(255,255,255,0.15);" onclick="document.getElementById('file-pdf-import').click()">
+              📂 Subir PDF de Recibo
+            </button>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">o bien</span>
+            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(255,255,255,0.15);" onclick="openPasteCodeModal()">
+              📋 Pegar Código Base64
+            </button>
+            <input type="file" id="file-pdf-import" accept=".pdf" style="display: none;" onchange="importPredictorFromPDF(event)">
+          </div>
+        </div>
+
         <div class="registration-form">
           <div class="form-group">
             <label for="input-user-name">Tu Nombre Completo *</label>
@@ -574,8 +592,32 @@
     </div>
   </div>
 
+  <!-- Modal 3: Paste Code for editing predictor -->
+  <div class="modal" id="modal-edit-paste-code">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="font-family:'Outfit';">📋 Cargar Apuesta desde Código</h3>
+        <button class="modal-close" onclick="closeModal('modal-edit-paste-code')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="import-box">
+          <p style="font-size:0.9rem; color:var(--text-secondary);">
+            Pega el código de validación técnica de tu apuesta (copiado de WhatsApp o del final de tu PDF) para cargar tus pronósticos.
+          </p>
+          <textarea class="import-textarea" id="textarea-edit-paste-code" placeholder="Pega el código aquí..."></textarea>
+          
+          <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+            <button class="btn btn-secondary" onclick="closeModal('modal-edit-paste-code')">Cancelar</button>
+            <button class="btn btn-primary" onclick="submitEditPasteCode()">Cargar Pronósticos</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Script logic -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

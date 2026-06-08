@@ -1933,6 +1933,119 @@ function closeModal(id) {
   document.getElementById(id).classList.remove('active');
 }
 
+// Setup PDF.js worker
+const pdfjsLib = window['pdfjs-dist/build/pdf'];
+if (pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+}
+
+// Extract base64 code from PDF file
+async function extractBase64FromPDF(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async function() {
+      try {
+        const typedarray = new Uint8Array(this.result);
+        const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
+        let textContent = '';
+        
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const text = await page.getTextContent();
+          const pageText = text.items.map(item => item.str).join(' ');
+          textContent += pageText + '\n';
+        }
+        
+        console.log("[PDF Import] Texto extraído:", textContent);
+        
+        // Find the base64 code in the text
+        const cleanText = textContent.replace(/\s+/g, ' ');
+        const marker = "MANUAL):";
+        const markerIdx = cleanText.indexOf(marker);
+        if (markerIdx !== -1) {
+          const rest = cleanText.substring(markerIdx + marker.length).trim();
+          const match = rest.match(/^([A-Za-z0-9\-_=]+)/);
+          if (match) {
+            resolve(match[1]);
+            return;
+          }
+        }
+        
+        // Fallback: search for any long base64-like string
+        const matches = textContent.match(/[A-Za-z0-9\-_=]{80,}/g);
+        if (matches && matches.length > 0) {
+          resolve(matches[0]);
+        } else {
+          reject(new Error('No se encontró el código de validación en el PDF.'));
+        }
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(new Error('Error al leer el archivo.'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// File picker handler for PDF import
+async function importPredictorFromPDF(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  try {
+    const code = await extractBase64FromPDF(file);
+    if (!code) {
+      alert("No se pudo encontrar el código de validación en el PDF.");
+      return;
+    }
+    loadBetCodeIntoPredictor(code);
+  } catch (err) {
+    console.error("Error al importar desde el PDF:", err);
+    alert("Error al leer el archivo PDF. Asegúrate de subir el archivo PDF del recibo oficial generado por la web.");
+  } finally {
+    event.target.value = ''; // clear input
+  }
+}
+
+// Paste Code Modal handlers
+function openPasteCodeModal() {
+  document.getElementById('textarea-edit-paste-code').value = '';
+  openModal('modal-edit-paste-code');
+}
+
+function submitEditPasteCode() {
+  const code = document.getElementById('textarea-edit-paste-code').value.trim();
+  if (!code) {
+    alert('Por favor, pega un código de apuesta.');
+    return;
+  }
+  loadBetCodeIntoPredictor(code);
+  closeModal('modal-edit-paste-code');
+}
+
+// Load a base64 code into the user draft predictor state
+function loadBetCodeIntoPredictor(code) {
+  const betObj = decodeBet(code);
+  if (!betObj) {
+    alert("El código de apuesta no es válido o está dañado.");
+    return;
+  }
+  
+  // Set user state
+  userPredictorState = betObj;
+  saveUserDraft();
+  
+  // Populate all inputs and UI components
+  populateFormFields();
+  recalculateBracketData();
+  updateAndRenderAll();
+  
+  // Move to Step 1
+  nextStep(1);
+  
+  alert(`¡Apuesta de ${betObj.name} cargada con éxito! Ahora puedes revisar y modificar tus pronósticos en las pestañas.`);
+}
+
 // 1. Import Player Code Modal
 function openImportModal() {
   document.getElementById('textarea-import-code').value = '';
