@@ -1958,38 +1958,43 @@ async function extractBase64FromPDF(file) {
         
         console.log("[PDF Import] Texto extraído:", textContent);
         
-        // Find the base64 code in the text
         const cleanText = textContent.replace(/\s+/g, ' ');
         const marker = "MANUAL):";
         const markerIdx = cleanText.indexOf(marker);
+        
+        let words = [];
         if (markerIdx !== -1) {
-          let rest = cleanText.substring(markerIdx + marker.length).trim();
-          
-          // Cut at footer if present
-          const footerIdx = rest.indexOf("Generado");
-          if (footerIdx !== -1) {
-            rest = rest.substring(0, footerIdx).trim();
-          }
-          
-          // Strip all whitespaces
-          const reconstructedCode = rest.replace(/\s+/g, '');
-          
-          // Clean any trailing non-base64 stuff if footer marker was missing
-          const cleanMatch = reconstructedCode.match(/^[A-Za-z0-9\-_=]+/);
-          if (cleanMatch && cleanMatch[0].length > 50) { // must be long enough
-            resolve(cleanMatch[0]);
+          const rest = cleanText.substring(markerIdx + marker.length).trim();
+          words = rest.split(/\s+/);
+        } else {
+          words = cleanText.split(/\s+/);
+        }
+        
+        // Find the first word that starts with 'ey' (JSON base64 prefix)
+        let startIndex = words.findIndex(w => w.startsWith('ey'));
+        if (startIndex === -1) {
+          // Fallback to any long word if no 'ey' prefix found
+          startIndex = words.findIndex(w => w.length > 50);
+        }
+        
+        if (startIndex === -1) {
+          reject(new Error('No se encontró el código de validación en el PDF.'));
+          return;
+        }
+        
+        // Reconstruct the base64 code by adding words one by one and checking decode viability
+        let currentString = '';
+        for (let i = startIndex; i < words.length; i++) {
+          currentString += words[i];
+          const decoded = decodeBet(currentString);
+          if (decoded) {
+            console.log("[PDF Import] Código decodificado con éxito!");
+            resolve(currentString);
             return;
           }
         }
         
-        // Fallback: search for any long base64-like string by cleaning all spaces first
-        const fullyCleanedText = textContent.replace(/\s+/g, '');
-        const matches = fullyCleanedText.match(/[A-Za-z0-9\-_=]{80,}/g);
-        if (matches && matches.length > 0) {
-          resolve(matches[0]);
-        } else {
-          reject(new Error('No se encontró el código de validación en el PDF.'));
-        }
+        reject(new Error('El código de apuesta extraído no es válido o está dañado.'));
       } catch (err) {
         reject(err);
       }
