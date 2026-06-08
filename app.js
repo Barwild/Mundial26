@@ -161,23 +161,122 @@ async function fetchServerData() {
       updateSyncDisplay();
       
       // Update DB status badge
-      updateDbStatusBadge(data.dbConnected, false, data.dbUrlPresent, data.dbError);
+      updateDbStatusBadge(data.dbConnected, false, data.dbUrlPresent, data.dbError, data.isVercel);
     } else {
-      updateDbStatusBadge(false, true, false, null);
+      updateDbStatusBadge(false, true, false, null, false);
     }
     
     const resParticipants = await fetch('/api/participants');
     if (resParticipants.ok) {
-      participants = await resParticipants.json();
-      localStorage.setItem('porra_participants', JSON.stringify(participants));
+      const serverParticipants = await resParticipants.json();
+      
+      // Load current local participants from localStorage
+      const savedParticipants = localStorage.getItem('porra_participants');
+      let localParticipants = [];
+      try {
+        localParticipants = savedParticipants ? JSON.parse(savedParticipants) : [];
+      } catch (e) {
+        console.error("Error parsing porra_participants from localStorage:", e);
+      }
+      
+      // Find participants that are in local storage but missing from server (by contact)
+      const missingInServer = localParticipants.filter(lp => 
+        lp && lp.contact && !serverParticipants.some(sp => sp && sp.contact === lp.contact)
+      );
+      
+      if (missingInServer.length > 0) {
+        console.log(`[Sync] Encontrados ${missingInServer.length} participantes locales no en el servidor.`);
+        participants = [...serverParticipants];
+        
+        missingInServer.forEach(lp => {
+          // Keep it but mark it as localOnly
+          participants.push({ ...lp, isLocalOnly: true });
+        });
+        
+        localStorage.setItem('porra_participants', JSON.stringify(participants));
+        showSyncLocalToWebBanner(missingInServer.length);
+      } else {
+        participants = serverParticipants;
+        localStorage.setItem('porra_participants', JSON.stringify(participants));
+        hideSyncLocalToWebBanner();
+      }
     }
   } catch (err) {
     console.warn('Servidor central no disponible. Corriendo en modo local/offline.');
-    updateDbStatusBadge(false, true, false, null);
+    updateDbStatusBadge(false, true, false, null, false);
   }
 }
 
-function updateDbStatusBadge(connected, serverDown, dbUrlPresent, dbError) {
+function showSyncLocalToWebBanner(count) {
+  const banner = document.getElementById('sync-local-banner');
+  const countEl = document.getElementById('sync-local-count');
+  if (banner && countEl) {
+    countEl.innerText = count;
+    banner.style.display = 'flex';
+  }
+}
+
+function hideSyncLocalToWebBanner() {
+  const banner = document.getElementById('sync-local-banner');
+  if (banner) {
+    banner.style.display = 'none';
+  }
+}
+
+async function syncLocalParticipantsToServer() {
+  // Get local-only participants from localStorage
+  const savedParticipants = localStorage.getItem('porra_participants');
+  const localParticipants = savedParticipants ? JSON.parse(savedParticipants) : [];
+  
+  // Find which ones are marked as localOnly
+  const localOnly = localParticipants.filter(p => p && p.isLocalOnly);
+  
+  if (localOnly.length === 0) {
+    alert('No hay apuestas locales pendientes de sincronizar.');
+    hideSyncLocalToWebBanner();
+    return;
+  }
+  
+  let successCount = 0;
+  let failCount = 0;
+  
+  for (const p of localOnly) {
+    // Remove the temporary flag before uploading
+    const cleanBet = { ...p };
+    delete cleanBet.isLocalOnly;
+    delete cleanBet.score; // Server calculates score
+    
+    try {
+      const response = await fetch('/api/participants', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(cleanBet)
+      });
+      
+      if (response.ok) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    } catch (err) {
+      failCount++;
+    }
+  }
+  
+  if (successCount > 0) {
+    alert(`¡Sincronización completada! Se subieron ${successCount} apuestas al servidor con éxito.` + (failCount > 0 ? ` (${failCount} fallaron).` : ''));
+    // Force a fresh fetch from server
+    await fetchServerData();
+    calculatePlayerScores();
+    renderLeaderboardTable();
+  } else {
+    alert('❌ Error al subir las apuestas al servidor. Verifica tu conexión.');
+  }
+}
+
+function updateDbStatusBadge(connected, serverDown, dbUrlPresent, dbError, isVercel) {
   const badge = document.getElementById('db-status-badge');
   if (!badge) return;
   
@@ -191,6 +290,12 @@ function updateDbStatusBadge(connected, serverDown, dbUrlPresent, dbError) {
     badge.style.background = 'rgba(40, 167, 69, 0.1)';
     badge.style.color = '#28a745';
     badge.style.borderColor = 'rgba(40, 167, 69, 0.2)';
+  } else if (isVercel) {
+    // Highly specific warning for Vercel without PostgreSQL
+    badge.innerText = '⚠️ Almacenamiento Volátil (Falta vincular Postgres en Vercel)';
+    badge.style.background = 'rgba(225, 83, 9, 0.1)';
+    badge.style.color = '#e15309';
+    badge.style.borderColor = 'rgba(225, 83, 9, 0.2)';
   } else if (!dbUrlPresent) {
     badge.innerText = '⚠️ Almacenamiento Temporal (Falta vincular la BD en Vercel)';
     badge.style.background = 'rgba(255, 193, 7, 0.1)';
@@ -1716,7 +1821,7 @@ function renderLeaderboardTable() {
         <div class="participant-cell">
           <div class="p-avatar">${p.avatar || '⚽'}</div>
           <div>
-            <div class="p-name">${p.name}</div>
+            <div class="p-name">${p.name} ${p.isLocalOnly ? '<small style="color:var(--accent-gold); font-size:0.75rem; margin-left:5px; border:1px solid rgba(255,215,0,0.3); padding:1px 4px; border-radius:4px; font-weight:bold; letter-spacing:0.5px;">LOCAL</small>' : ''}</div>
           </div>
         </div>
       </td>

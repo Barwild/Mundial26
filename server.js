@@ -135,7 +135,7 @@ function readDB() {
 }
 
 // Write database
-function writeDB(data) {
+async function writeDB(data) {
   dbMemory = data;
   try {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
@@ -144,8 +144,11 @@ function writeDB(data) {
   }
 
   if (pgClient) {
-    pgClient.query('INSERT INTO mundial_2026_data (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2', ['db', JSON.stringify(data)])
-      .catch(err => console.error('❌ Error persistiendo datos en PostgreSQL en segundo plano:', err.message));
+    try {
+      await pgClient.query('INSERT INTO mundial_2026_data (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2', ['db', JSON.stringify(data)]);
+    } catch (err) {
+      console.error('❌ Error persistiendo datos en PostgreSQL:', err.message);
+    }
   }
 }
 
@@ -430,7 +433,7 @@ async function syncExternalData() {
       db.actualResults.extras.goals = totalGoals;
     }
 
-    writeDB(db);
+    await writeDB(db);
     console.log('✅ Sincronización finalizada correctamente.');
     return { success: true, resolvedGroupsCount: resolvedGroups.length, totalGoals };
   } catch (err) {
@@ -447,41 +450,53 @@ let isDbInitialized = false;
 let dbInitPromise = null;
 
 async function ensureDbInit(req, res, next) {
-  if (isDbInitialized) {
-    const db = readDB();
-    const now = Date.now();
-    // Auto-sincronizar de fondo si han pasado más de 10 minutos
-    if (db.autoSync !== false && (!db.lastSyncTime || now - db.lastSyncTime > 600000)) {
-      db.lastSyncTime = now;
-      writeDB(db);
-      console.log('🔄 Activando sincronización de fondo por solicitud de API...');
-      syncExternalData().catch(err => console.error('Error en sincronización automática activa:', err.message));
+  if (!isDbInitialized) {
+    if (!dbInitPromise) {
+      dbInitPromise = initDB().then(() => {
+        isDbInitialized = true;
+      }).catch(err => {
+        console.error('Error inicializando base de datos en middleware:', err);
+        dbInitPromise = null; // Permitir reintentar
+      });
     }
-    return next();
+    await dbInitPromise;
   }
 
-  if (!dbInitPromise) {
-    dbInitPromise = initDB().then(() => {
-      isDbInitialized = true;
-      const db = readDB();
-      if (!db.lastSyncTime) {
-        db.lastSyncTime = Date.now();
-        writeDB(db);
-      }
-    }).catch(err => {
-      console.error('Error inicializando base de datos en middleware:', err);
-      dbInitPromise = null; // Permitir reintentar
-    });
+  // Check health: if Postgres is configured but offline, and local cache is empty, fail to prevent serving blank data.
+  const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (dbUrl && !pgClient) {
+    const isLocalEmpty = !dbMemory || !dbMemory.participants || dbMemory.participants.length <= 1;
+    if (isLocalEmpty) {
+      return res.status(503).json({
+        error: 'La base de datos PostgreSQL no está disponible y el almacenamiento local está vacío.',
+        dbConnected: false,
+        dbUrlPresent: true,
+        dbError: lastDbError
+      });
+    }
   }
 
-  await dbInitPromise;
+  const db = readDB();
+  const now = Date.now();
+  // Auto-sincronizar y AWAIT para asegurar que termine antes de que Vercel congele la función
+  if (db.autoSync !== false && (!db.lastSyncTime || now - db.lastSyncTime > 600000)) {
+    db.lastSyncTime = now;
+    await writeDB(db);
+    console.log('🔄 Activando sincronización por solicitud de API...');
+    try {
+      await syncExternalData();
+    } catch (err) {
+      console.error('Error en sincronización automática activa:', err.message);
+    }
+  }
+
   next();
 }
 
 app.use('/api', ensureDbInit);
 
 // POST change password
-app.post('/api/change-password', (req, res) => {
+app.post('/api/change-password', async (req, res) => {
   const { oldPassword, newPassword } = req.body;
   if (!oldPassword || !newPassword) {
     return res.status(400).json({ error: 'Faltan campos: contraseña antigua y nueva.' });
@@ -495,7 +510,7 @@ app.post('/api/change-password', (req, res) => {
   }
   
   db.adminPassword = newPassword;
-  writeDB(db);
+  await writeDB(db);
   console.log('Contraseña de administrador modificada correctamente.');
   res.json({ success: true, message: 'Contraseña cambiada con éxito.' });
 });
@@ -507,7 +522,7 @@ app.get('/api/participants', (req, res) => {
 });
 
 // POST participant (create/update)
-app.post('/api/participants', (req, res) => {
+app.post('/api/participants', async (req, res) => {
   const newBet = req.body;
   
   if (!newBet || !newBet.name || !newBet.contact) {
@@ -538,7 +553,7 @@ app.post('/api/participants', (req, res) => {
     console.log(`Nueva apuesta registrada: ${newBet.name} (${newBet.contact})`);
   }
   
-  writeDB(db);
+  await writeDB(db);
   res.json({ success: true, message: '¡Apuesta guardada con éxito!' });
 });
 
@@ -550,12 +565,13 @@ app.get('/api/results', (req, res) => {
     autoSync: db.autoSync !== false,
     dbConnected: pgClient !== null,
     dbUrlPresent: !!process.env.DATABASE_URL || !!process.env.POSTGRES_URL,
-    dbError: lastDbError
+    dbError: lastDbError,
+    isVercel: !!(process.env.VERCEL || process.env.VERCEL_ENV)
   });
 });
 
 // POST actual results (Admin only)
-app.post('/api/results', verifyAdmin, (req, res) => {
+app.post('/api/results', verifyAdmin, async (req, res) => {
   const newResults = req.body;
   
   if (!newResults) {
@@ -568,7 +584,7 @@ app.post('/api/results', verifyAdmin, (req, res) => {
   // Desactivar sincronización automática para respetar la modificación manual
   db.autoSync = false;
   
-  writeDB(db);
+  await writeDB(db);
   
   console.log('Resultados oficiales del Mundial actualizados manualmente por el Administrador. Sincronización automática DESACTIVADA.');
   res.json({ success: true, message: 'Resultados reales guardados con éxito y sincronización automática desactivada.', autoSync: false });
@@ -579,7 +595,7 @@ app.post('/api/sync', verifyAdmin, async (req, res) => {
   try {
     const db = readDB();
     db.autoSync = true; // Activar de nuevo al solicitar sync manual
-    writeDB(db);
+    await writeDB(db);
     
     const result = await syncExternalData();
     res.json({ success: true, message: 'Sincronización manual realizada.', result });
@@ -589,20 +605,20 @@ app.post('/api/sync', verifyAdmin, async (req, res) => {
 });
 
 // POST toggle auto-sync (Admin only)
-app.post('/api/toggle-autosync', verifyAdmin, (req, res) => {
+app.post('/api/toggle-autosync', verifyAdmin, async (req, res) => {
   const { enabled } = req.body;
   if (enabled === undefined) return res.status(400).json({ error: 'Falta parámetro: enabled.' });
   
   const db = readDB();
   db.autoSync = !!enabled;
-  writeDB(db);
+  await writeDB(db);
   
   console.log(`Estado de Sincronización Automática cambiado a: ${db.autoSync ? 'ACTIVADO' : 'DESACTIVADO'}`);
   res.json({ success: true, autoSync: db.autoSync });
 });
 
 // POST toggle paid status (Admin only)
-app.post('/api/participants/toggle-paid', verifyAdmin, (req, res) => {
+app.post('/api/participants/toggle-paid', verifyAdmin, async (req, res) => {
   const { contact } = req.body;
   if (!contact) return res.status(400).json({ error: 'Contacto requerido.' });
   
@@ -611,7 +627,7 @@ app.post('/api/participants/toggle-paid', verifyAdmin, (req, res) => {
   
   if (idx > -1) {
     db.participants[idx].paid = !db.participants[idx].paid;
-    writeDB(db);
+    await writeDB(db);
     res.json({ success: true, paid: db.participants[idx].paid });
     console.log(`Estado de pago de ${db.participants[idx].name} cambiado a: ${db.participants[idx].paid ? 'PAGADO' : 'PENDIENTE'}`);
   } else {
@@ -620,7 +636,7 @@ app.post('/api/participants/toggle-paid', verifyAdmin, (req, res) => {
 });
 
 // POST delete participant (Admin only)
-app.post('/api/participants/delete', verifyAdmin, (req, res) => {
+app.post('/api/participants/delete', verifyAdmin, async (req, res) => {
   const { contact } = req.body;
   if (!contact) return res.status(400).json({ error: 'Contacto requerido.' });
   
@@ -629,7 +645,7 @@ app.post('/api/participants/delete', verifyAdmin, (req, res) => {
   db.participants = db.participants.filter(p => p.contact !== contact);
   
   if (db.participants.length < initialCount) {
-    writeDB(db);
+    await writeDB(db);
     res.json({ success: true });
     console.log(`Participante con contacto ${contact} eliminado.`);
   } else {
@@ -638,8 +654,8 @@ app.post('/api/participants/delete', verifyAdmin, (req, res) => {
 });
 
 // POST reset system (Admin only)
-app.post('/api/reset', verifyAdmin, (req, res) => {
-  writeDB(INITIAL_DB);
+app.post('/api/reset', verifyAdmin, async (req, res) => {
+  await writeDB(INITIAL_DB);
   console.log('Base de datos restablecida completamente a valores de fábrica.');
   res.json({ success: true, message: 'Base de datos restablecida.' });
 });

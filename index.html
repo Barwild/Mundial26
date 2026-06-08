@@ -366,6 +366,17 @@
         </div>
       </div>
 
+      <!-- Sync Local Data Banner -->
+      <div class="alert alert-info" id="sync-local-banner" style="display:none; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border: 1px solid rgba(0, 123, 255, 0.2); margin-bottom: 20px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span>📦</span>
+          <span><strong>Copia local detectada:</strong> Hay <span id="sync-local-count" style="font-weight:bold; color:var(--accent-gold);">0</span> apuestas guardadas en tu navegador que no están en el servidor.</span>
+        </div>
+        <button class="btn btn-primary" style="padding:6px 12px; font-size:0.8rem; margin:0;" onclick="syncLocalParticipantsToServer()">
+          📤 Subir al Servidor
+        </button>
+      </div>
+
       <!-- Leaderboard glass card -->
       <div class="glass-card" style="padding: 10px;">
         <div class="table-container">
