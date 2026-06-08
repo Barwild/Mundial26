@@ -1963,16 +1963,28 @@ async function extractBase64FromPDF(file) {
         const marker = "MANUAL):";
         const markerIdx = cleanText.indexOf(marker);
         if (markerIdx !== -1) {
-          const rest = cleanText.substring(markerIdx + marker.length).trim();
-          const match = rest.match(/^([A-Za-z0-9\-_=]+)/);
-          if (match) {
-            resolve(match[1]);
+          let rest = cleanText.substring(markerIdx + marker.length).trim();
+          
+          // Cut at footer if present
+          const footerIdx = rest.indexOf("Generado");
+          if (footerIdx !== -1) {
+            rest = rest.substring(0, footerIdx).trim();
+          }
+          
+          // Strip all whitespaces
+          const reconstructedCode = rest.replace(/\s+/g, '');
+          
+          // Clean any trailing non-base64 stuff if footer marker was missing
+          const cleanMatch = reconstructedCode.match(/^[A-Za-z0-9\-_=]+/);
+          if (cleanMatch && cleanMatch[0].length > 50) { // must be long enough
+            resolve(cleanMatch[0]);
             return;
           }
         }
         
-        // Fallback: search for any long base64-like string
-        const matches = textContent.match(/[A-Za-z0-9\-_=]{80,}/g);
+        // Fallback: search for any long base64-like string by cleaning all spaces first
+        const fullyCleanedText = textContent.replace(/\s+/g, '');
+        const matches = fullyCleanedText.match(/[A-Za-z0-9\-_=]{80,}/g);
         if (matches && matches.length > 0) {
           resolve(matches[0]);
         } else {
