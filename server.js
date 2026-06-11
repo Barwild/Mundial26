@@ -549,6 +549,15 @@ app.post('/api/participants', async (req, res) => {
   
   const db = readDB();
   
+  // Check if administrator password is provided
+  const password = req.headers['x-admin-password'];
+  const serverPassword = db.adminPassword || 'admin';
+  const isAdmin = password === serverPassword;
+  
+  if (!isAdmin) {
+    return res.status(403).json({ error: 'El registro y modificación de apuestas está cerrado.' });
+  }
+  
   // Find if already exists by contact (unique key)
   const existingIdx = db.participants.findIndex(p => p.contact === newBet.contact);
   
@@ -560,21 +569,15 @@ app.post('/api/participants', async (req, res) => {
       paid: existing.paid,
       score: existing.score
     };
-    console.log(`Apuesta actualizada para: ${newBet.name} (${newBet.contact})`);
+    console.log(`Apuesta actualizada por Admin para: ${newBet.name} (${newBet.contact})`);
   } else {
-    // Check if the administrator is registering/importing this new bet
-    const password = req.headers['x-admin-password'];
-    const serverPassword = db.adminPassword || 'admin';
-    if (password === serverPassword) {
-      db.participants.push({
-        ...newBet,
-        paid: false,
-        score: 0
-      });
-      console.log(`Nueva apuesta registrada por Admin: ${newBet.name} (${newBet.contact})`);
-    } else {
-      return res.status(403).json({ error: 'El registro de nuevas apuestas está cerrado. Solo se permite actualizar apuestas existentes.' });
-    }
+    // Push new
+    db.participants.push({
+      ...newBet,
+      paid: false,
+      score: 0
+    });
+    console.log(`Nueva apuesta registrada por Admin: ${newBet.name} (${newBet.contact})`);
   }
   
   await writeDB(db);

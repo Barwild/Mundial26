@@ -55,25 +55,12 @@
 
       <!-- STEP 1: Identification -->
       <div id="step-1-id" class="step-panel glass-card">
-        <h2 class="section-title" id="step-1-title">Consulta y Edición de Apuesta</h2>
-        <p class="section-desc" id="step-1-desc">Carga tu apuesta existente mediante el código de validación para verla o modificarla.</p>
+        <h2 class="section-title" id="step-1-title">Apuestas Cerradas</h2>
+        <p class="section-desc" id="step-1-desc">El período para realizar o modificar apuestas ha finalizado.</p>
 
         <!-- New Bets Blocked Alert -->
         <div class="alert alert-warning" id="new-bets-blocked-alert" style="margin-bottom: 20px; display: none;">
           <!-- Will be populated by JS -->
-        </div>
-
-        <!-- Load draft / edit existing -->
-        <div class="glass-card" style="margin-bottom: 25px; background: rgba(255, 255, 255, 0.01); border: 1px dashed rgba(255, 215, 0, 0.2); padding: 15px; text-align: center; border-radius: 12px;">
-          <h4 style="font-family:'Outfit'; margin: 0 0 5px 0; color: var(--accent-gold); font-size: 0.95rem; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px;">
-            🔄 ¿Quieres editar una apuesta existente?
-          </h4>
-          <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0 0 12px 0;">Pega el código de validación para cargar tus pronósticos.</p>
-          <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap; align-items:center;">
-            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(255,255,255,0.15);" onclick="openPasteCodeModal()">
-              📋 Pegar Código de Validación
-            </button>
-          </div>
         </div>
 
         <div class="registration-form">
@@ -589,28 +576,7 @@
     </div>
   </div>
 
-  <!-- Modal 3: Paste Code for editing predictor -->
-  <div class="modal" id="modal-edit-paste-code">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 style="font-family:'Outfit';">📋 Cargar Apuesta desde Código</h3>
-        <button class="modal-close" onclick="closeModal('modal-edit-paste-code')">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="import-box">
-          <p style="font-size:0.9rem; color:var(--text-secondary);">
-            Pega el código de validación técnica de tu apuesta (copiado de WhatsApp o del final de tu PDF) para cargar tus pronósticos.
-          </p>
-          <textarea class="import-textarea" id="textarea-edit-paste-code" placeholder="Pega el código aquí..."></textarea>
-          
-          <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
-            <button class="btn btn-secondary" onclick="closeModal('modal-edit-paste-code')">Cancelar</button>
-            <button class="btn btn-primary" onclick="submitEditPasteCode()">Cargar Pronósticos</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+
 
   <!-- Script logic -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>

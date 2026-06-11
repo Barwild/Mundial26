@@ -1963,45 +1963,6 @@ function closeModal(id) {
 
 // PDF import is disabled
 
-// Paste Code Modal handlers
-function openPasteCodeModal() {
-  document.getElementById('textarea-edit-paste-code').value = '';
-  openModal('modal-edit-paste-code');
-}
-
-function submitEditPasteCode() {
-  const code = document.getElementById('textarea-edit-paste-code').value.trim();
-  if (!code) {
-    alert('Por favor, pega un código de apuesta.');
-    return;
-  }
-  loadBetCodeIntoPredictor(code);
-  closeModal('modal-edit-paste-code');
-}
-
-// Load a base64 code into the user draft predictor state
-function loadBetCodeIntoPredictor(code) {
-  const betObj = decodeBet(code);
-  if (!betObj) {
-    alert("El código de apuesta no es válido o está dañado.");
-    return;
-  }
-  
-  // Set user state
-  userPredictorState = betObj;
-  saveUserDraft();
-  
-  // Populate all inputs and UI components
-  populateFormFields();
-  recalculateBracketData();
-  updateAndRenderAll();
-  
-  // Move to Step 1
-  nextStep(1);
-  
-  alert(`¡Apuesta de ${betObj.name} cargada con éxito! Ahora puedes revisar y modificar tus pronósticos en las pestañas.`);
-}
-
 // 1. Import Player Code Modal
 function openImportModal() {
   document.getElementById('textarea-import-code').value = '';
@@ -2585,43 +2546,35 @@ function updateAndRenderAll() {
   updateStep1Blocking();
 }
 
-function isEditingExistingBet() {
-  if (adminMode) return true;
-  if (!userPredictorState || !userPredictorState.contact) return false;
-  return participants.some(p => p.contact === userPredictorState.contact);
-}
-
 function updateStep1Blocking() {
-  const isExisting = isEditingExistingBet();
   const alertEl = document.getElementById('new-bets-blocked-alert');
   const nameInput = document.getElementById('input-user-name');
   const avatarOptions = document.querySelectorAll('.avatar-option');
   const nextBtn = document.getElementById('btn-step1-next');
+  const titleEl = document.getElementById('step-1-title');
+  const descEl = document.getElementById('step-1-desc');
   
-  if (alertEl) {
-    if (isExisting) {
-      if (adminMode) {
-        alertEl.style.display = 'none';
-      } else {
-        alertEl.style.display = 'flex';
-        alertEl.className = 'alert alert-info';
-        alertEl.innerHTML = `<strong>✏️ Modo Edición:</strong> Modificando la apuesta existente de <strong>${userPredictorState.name}</strong>.`;
-      }
-      if (nameInput) nameInput.disabled = false;
-      avatarOptions.forEach(opt => opt.style.pointerEvents = 'auto');
-      if (nextBtn) nextBtn.disabled = false;
-    } else {
+  if (adminMode) {
+    if (alertEl) alertEl.style.display = 'none';
+    if (titleEl) titleEl.innerText = "Configuración de Resultados Reales";
+    if (descEl) descEl.innerText = "Introduce los resultados oficiales del Mundial para calcular los puntos.";
+    if (nameInput) nameInput.disabled = false;
+    avatarOptions.forEach(opt => opt.style.pointerEvents = 'auto');
+    if (nextBtn) nextBtn.disabled = false;
+  } else {
+    if (alertEl) {
       alertEl.style.display = 'flex';
       alertEl.className = 'alert alert-warning';
-      alertEl.innerHTML = `<strong>⚠️ Registro Cerrado:</strong> No se permiten nuevas apuestas. Introduce tu código de validación abajo para modificar una apuesta existente.`;
-      
-      if (nameInput) {
-        nameInput.disabled = true;
-        nameInput.value = '';
-      }
-      avatarOptions.forEach(opt => opt.style.pointerEvents = 'none');
-      if (nextBtn) nextBtn.disabled = true;
+      alertEl.innerHTML = `<strong>⚠️ Apuestas Cerradas:</strong> Las apuestas están cerradas y bloqueadas. No se permiten nuevos registros ni modificaciones.`;
     }
+    if (titleEl) titleEl.innerText = "Apuestas Cerradas";
+    if (descEl) descEl.innerText = "El período para realizar o modificar apuestas ha finalizado.";
+    if (nameInput) {
+      nameInput.disabled = true;
+      nameInput.value = '';
+    }
+    avatarOptions.forEach(opt => opt.style.pointerEvents = 'none');
+    if (nextBtn) nextBtn.disabled = true;
   }
   
   const createAnotherBtn = document.getElementById('btn-create-another-bet');
