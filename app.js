@@ -1044,6 +1044,7 @@ async function generateAndShowSummary() {
   
   // Submit to Server Database
   let submittedOk = false;
+  let serverErrorMsg = '';
   try {
     const response = await fetch('/api/participants', {
       method: 'POST',
@@ -1055,6 +1056,11 @@ async function generateAndShowSummary() {
     if (response.ok) {
       submittedOk = true;
       console.log('Apuesta registrada en el servidor.');
+    } else {
+      try {
+        const errData = await response.json();
+        serverErrorMsg = errData.error || '';
+      } catch (e) {}
     }
   } catch (err) {
     console.error('Error al conectar con el servidor:', err);
@@ -1084,7 +1090,10 @@ async function generateAndShowSummary() {
     // Go to classification tab
     switchMainTab('leaderboard');
   } else {
-    alert('⚠️ No se pudo registrar tu apuesta en el servidor central (offline).\n\nSin embargo, se ha descargado tu recibo en PDF con tus pronósticos y código de validación. Por favor, envíaselo al administrador por WhatsApp para que la registre manualmente.');
+    const msg = serverErrorMsg 
+      ? `⚠️ Error del servidor: ${serverErrorMsg}` 
+      : '⚠️ No se pudo registrar tu apuesta en el servidor central (offline).\n\nSin embargo, se ha descargado tu recibo en PDF con tus pronósticos y código de validación. Por favor, envíaselo al administrador por WhatsApp para que la registre manualmente.';
+    alert(msg);
     
     // Switch to classification tab anyway so they can see the overall board
     switchMainTab('leaderboard');
@@ -1952,96 +1961,7 @@ function closeModal(id) {
   document.getElementById(id).classList.remove('active');
 }
 
-// Setup PDF.js worker
-const pdfjsLib = window['pdfjs-dist/build/pdf'];
-if (pdfjsLib) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-}
-
-// Extract base64 code from PDF file
-async function extractBase64FromPDF(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = async function() {
-      try {
-        const typedarray = new Uint8Array(this.result);
-        const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
-        let textContent = '';
-        
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const text = await page.getTextContent();
-          const pageText = text.items.map(item => item.str).join(' ');
-          textContent += pageText + '\n';
-        }
-        
-        console.log("[PDF Import] Texto extraído:", textContent);
-        
-        const cleanText = textContent.replace(/\s+/g, ' ');
-        const marker = "MANUAL):";
-        const markerIdx = cleanText.indexOf(marker);
-        
-        let words = [];
-        if (markerIdx !== -1) {
-          const rest = cleanText.substring(markerIdx + marker.length).trim();
-          words = rest.split(/\s+/);
-        } else {
-          words = cleanText.split(/\s+/);
-        }
-        
-        // Find the first word that starts with 'ey' (JSON base64 prefix)
-        let startIndex = words.findIndex(w => w.startsWith('ey'));
-        if (startIndex === -1) {
-          // Fallback to any long word if no 'ey' prefix found
-          startIndex = words.findIndex(w => w.length > 50);
-        }
-        
-        if (startIndex === -1) {
-          reject(new Error('No se encontró el código de validación en el PDF.'));
-          return;
-        }
-        
-        // Reconstruct the base64 code by adding words one by one and checking decode viability
-        let currentString = '';
-        for (let i = startIndex; i < words.length; i++) {
-          currentString += words[i];
-          const decoded = decodeBet(currentString);
-          if (decoded) {
-            console.log("[PDF Import] Código decodificado con éxito!");
-            resolve(currentString);
-            return;
-          }
-        }
-        
-        reject(new Error('El código de apuesta extraído no es válido o está dañado.'));
-      } catch (err) {
-        reject(err);
-      }
-    };
-    reader.onerror = () => reject(new Error('Error al leer el archivo.'));
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-// File picker handler for PDF import
-async function importPredictorFromPDF(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  
-  try {
-    const code = await extractBase64FromPDF(file);
-    if (!code) {
-      alert("No se pudo encontrar el código de validación en el PDF.");
-      return;
-    }
-    loadBetCodeIntoPredictor(code);
-  } catch (err) {
-    console.error("Error al importar desde el PDF:", err);
-    alert("Error al leer el archivo PDF. Asegúrate de subir el archivo PDF del recibo oficial generado por la web.");
-  } finally {
-    event.target.value = ''; // clear input
-  }
-}
+// PDF import is disabled
 
 // Paste Code Modal handlers
 function openPasteCodeModal() {
@@ -2117,7 +2037,8 @@ async function submitImportedCode() {
     const response = await fetch('/api/participants', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'x-admin-password': adminPassword
       },
       body: JSON.stringify(betObj)
     });
@@ -2659,6 +2580,54 @@ function updateAndRenderAll() {
   // Populate form fields
   populateFormFields();
   updateStepTracker();
+  
+  // Update step 1 blocking state
+  updateStep1Blocking();
+}
+
+function isEditingExistingBet() {
+  if (adminMode) return true;
+  if (!userPredictorState || !userPredictorState.contact) return false;
+  return participants.some(p => p.contact === userPredictorState.contact);
+}
+
+function updateStep1Blocking() {
+  const isExisting = isEditingExistingBet();
+  const alertEl = document.getElementById('new-bets-blocked-alert');
+  const nameInput = document.getElementById('input-user-name');
+  const avatarOptions = document.querySelectorAll('.avatar-option');
+  const nextBtn = document.getElementById('btn-step1-next');
+  
+  if (alertEl) {
+    if (isExisting) {
+      if (adminMode) {
+        alertEl.style.display = 'none';
+      } else {
+        alertEl.style.display = 'flex';
+        alertEl.className = 'alert alert-info';
+        alertEl.innerHTML = `<strong>✏️ Modo Edición:</strong> Modificando la apuesta existente de <strong>${userPredictorState.name}</strong>.`;
+      }
+      if (nameInput) nameInput.disabled = false;
+      avatarOptions.forEach(opt => opt.style.pointerEvents = 'auto');
+      if (nextBtn) nextBtn.disabled = false;
+    } else {
+      alertEl.style.display = 'flex';
+      alertEl.className = 'alert alert-warning';
+      alertEl.innerHTML = `<strong>⚠️ Registro Cerrado:</strong> No se permiten nuevas apuestas. Introduce tu código de validación abajo para modificar una apuesta existente.`;
+      
+      if (nameInput) {
+        nameInput.disabled = true;
+        nameInput.value = '';
+      }
+      avatarOptions.forEach(opt => opt.style.pointerEvents = 'none');
+      if (nextBtn) nextBtn.disabled = true;
+    }
+  }
+  
+  const createAnotherBtn = document.getElementById('btn-create-another-bet');
+  if (createAnotherBtn) {
+    createAnotherBtn.style.display = 'none';
+  }
 }
 
 // Run application on load

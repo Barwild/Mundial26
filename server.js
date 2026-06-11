@@ -562,13 +562,19 @@ app.post('/api/participants', async (req, res) => {
     };
     console.log(`Apuesta actualizada para: ${newBet.name} (${newBet.contact})`);
   } else {
-    // Push new
-    db.participants.push({
-      ...newBet,
-      paid: false,
-      score: 0
-    });
-    console.log(`Nueva apuesta registrada: ${newBet.name} (${newBet.contact})`);
+    // Check if the administrator is registering/importing this new bet
+    const password = req.headers['x-admin-password'];
+    const serverPassword = db.adminPassword || 'admin';
+    if (password === serverPassword) {
+      db.participants.push({
+        ...newBet,
+        paid: false,
+        score: 0
+      });
+      console.log(`Nueva apuesta registrada por Admin: ${newBet.name} (${newBet.contact})`);
+    } else {
+      return res.status(403).json({ error: 'El registro de nuevas apuestas está cerrado. Solo se permite actualizar apuestas existentes.' });
+    }
   }
   
   await writeDB(db);

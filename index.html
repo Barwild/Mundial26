@@ -17,7 +17,7 @@
     
     <div class="nav-links">
       <button class="nav-btn active" id="btn-tab-predictor" onclick="switchMainTab('predictor')">
-        📝 Crear mi Porra
+        📝 Mi Porra / Editar
       </button>
       <button class="nav-btn" id="btn-tab-leaderboard" onclick="switchMainTab('leaderboard')">
         📊 Clasificación
@@ -55,24 +55,24 @@
 
       <!-- STEP 1: Identification -->
       <div id="step-1-id" class="step-panel glass-card">
-        <h2 class="section-title">Registro de Participante</h2>
-        <p class="section-desc">Por favor, introduce tu nombre y datos para registrar tu apuesta en la clasificación del organizador.</p>
+        <h2 class="section-title" id="step-1-title">Consulta y Edición de Apuesta</h2>
+        <p class="section-desc" id="step-1-desc">Carga tu apuesta existente mediante el código de validación para verla o modificarla.</p>
+
+        <!-- New Bets Blocked Alert -->
+        <div class="alert alert-warning" id="new-bets-blocked-alert" style="margin-bottom: 20px; display: none;">
+          <!-- Will be populated by JS -->
+        </div>
 
         <!-- Load draft / edit existing -->
         <div class="glass-card" style="margin-bottom: 25px; background: rgba(255, 255, 255, 0.01); border: 1px dashed rgba(255, 215, 0, 0.2); padding: 15px; text-align: center; border-radius: 12px;">
           <h4 style="font-family:'Outfit'; margin: 0 0 5px 0; color: var(--accent-gold); font-size: 0.95rem; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px;">
             🔄 ¿Quieres editar una apuesta existente?
           </h4>
-          <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0 0 12px 0;">Sube el PDF de tu recibo o pega el código de validación para cargar tus pronósticos.</p>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0 0 12px 0;">Pega el código de validación para cargar tus pronósticos.</p>
           <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap; align-items:center;">
-            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(255,255,255,0.15);" onclick="document.getElementById('file-pdf-import').click()">
-              📂 Subir PDF de Recibo
-            </button>
-            <span style="font-size: 0.8rem; color: var(--text-muted);">o bien</span>
             <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(255,255,255,0.15);" onclick="openPasteCodeModal()">
-              📋 Pegar Código Base64
+              📋 Pegar Código de Validación
             </button>
-            <input type="file" id="file-pdf-import" accept=".pdf" style="display: none;" onchange="importPredictorFromPDF(event)">
           </div>
         </div>
 
@@ -305,7 +305,7 @@
             <button class="btn btn-primary" onclick="downloadLastBetPDF()">
               📄 Descargar Recibo PDF
             </button>
-            <button class="btn btn-secondary" style="margin-top: 15px;" onclick="resetPredictorForm()">
+            <button class="btn btn-secondary" style="margin-top: 15px;" id="btn-create-another-bet" onclick="resetPredictorForm()">
               🔄 Crear Otra Apuesta Nueva
             </button>
           </div>
@@ -614,7 +614,6 @@
 
   <!-- Script logic -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
