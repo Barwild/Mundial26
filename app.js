@@ -1717,6 +1717,24 @@ function calculatePlayerScores() {
 
 // Compute the list of team IDs advancing to a specific round in a state object
 function getTeamsAdvancingToRound(stateObj, roundKey) {
+  // If this is the actual results object (has ADMIN_REAL_RESULTS contact),
+  // check if we have the real teams arrays populated by the sync server.
+  // If so, return them directly to ensure 100% fair and correct scoring.
+  if (stateObj.contact === 'ADMIN_REAL_RESULTS') {
+    if (roundKey === 'r32' && stateObj.realR16Teams && stateObj.realR16Teams.length > 0) {
+      return stateObj.realR16Teams;
+    }
+    if (roundKey === 'r16' && stateObj.realQFTeams && stateObj.realQFTeams.length > 0) {
+      return stateObj.realQFTeams;
+    }
+    if (roundKey === 'qf' && stateObj.realSFTeams && stateObj.realSFTeams.length > 0) {
+      return stateObj.realSFTeams;
+    }
+    if (roundKey === 'sf' && stateObj.realFinalTeams && stateObj.realFinalTeams.length > 0) {
+      return stateObj.realFinalTeams;
+    }
+  }
+
   // Let's resolve the bracket data for this specific state object
   let r32Teams = R32_MATCH_DEFS.map(def => {
     const t1 = stateObj.groups[def.t1.group][def.t1.rank - 1];
@@ -1787,6 +1805,9 @@ function getTeamsAdvancingToRound(stateObj, roundKey) {
 
 // Get the champion team ID for a state object
 function getChampionForState(stateObj) {
+  if (stateObj.contact === 'ADMIN_REAL_RESULTS' && stateObj.realChampion) {
+    return stateObj.realChampion;
+  }
   const finalists = getTeamsAdvancingToRound(stateObj, 'sf');
   if (stateObj.bracket.f === null || !finalists[0] || !finalists[1]) return null;
   return finalists[stateObj.bracket.f];

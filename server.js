@@ -380,6 +380,7 @@ async function syncExternalData() {
       sfWinners[1] !== null ? sfPairs[1][sfWinners[1]] : null
     ];
     let finalWinnerIdx = null;
+    let realWinnerCode = null;
 
     const finalGame = games.find(g => g.type === 'final');
     if (finalGame && finalGame.finished === "TRUE") {
@@ -399,7 +400,7 @@ async function syncExternalData() {
       const homeCode = TEAM_MAP[finalGame.home_team_id];
       const awayCode = TEAM_MAP[finalGame.away_team_id];
 
-      let realWinnerCode = null;
+      realWinnerCode = null;
       if (hGoals.main > aGoals.main) {
         realWinnerCode = homeCode;
       } else if (aGoals.main > hGoals.main) {
@@ -433,6 +434,12 @@ async function syncExternalData() {
     if (anyFinished) {
       db.actualResults.extras.goals = totalGoals;
     }
+
+    db.actualResults.realR16Teams = Array.from(realR16Teams);
+    db.actualResults.realQFTeams = Array.from(realQFTeams);
+    db.actualResults.realSFTeams = Array.from(realSFTeams);
+    db.actualResults.realFinalTeams = Array.from(realFinalTeams);
+    db.actualResults.realChampion = realWinnerCode || null;
 
     await writeDB(db);
     console.log('✅ Sincronización finalizada correctamente.');
@@ -607,6 +614,13 @@ app.post('/api/results', verifyAdmin, async (req, res) => {
   
   const db = readDB();
   db.actualResults = newResults;
+  
+  // Limpiar arrays reales para forzar la propagación manual basada en el cuadro
+  delete db.actualResults.realR16Teams;
+  delete db.actualResults.realQFTeams;
+  delete db.actualResults.realSFTeams;
+  delete db.actualResults.realFinalTeams;
+  delete db.actualResults.realChampion;
   
   // Desactivar sincronización automática para respetar la modificación manual
   db.autoSync = false;
