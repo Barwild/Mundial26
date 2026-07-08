@@ -504,7 +504,9 @@ async function ensureDbInit(req, res, next) {
   const db = readDB();
   const now = Date.now();
   // Auto-sincronizar y AWAIT para asegurar que termine antes de que Vercel congele la función
-  if (db.autoSync !== false && (!db.lastSyncTime || now - db.lastSyncTime > 600000)) {
+  // Forzamos la sincronización si faltan las listas reales de clasificados en actualResults
+  const needsRealTeamsSync = db.autoSync !== false && (!db.actualResults.realR16Teams || db.actualResults.realR16Teams.length === 0);
+  if (db.autoSync !== false && (!db.lastSyncTime || now - db.lastSyncTime > 600000 || needsRealTeamsSync)) {
     db.lastSyncTime = now;
     await writeDB(db);
     console.log('🔄 Activando sincronización por solicitud de API...');
