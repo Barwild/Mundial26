@@ -25,22 +25,22 @@ const INITIAL_DB = {
     name: 'Resultados Reales',
     contact: 'ADMIN_REAL_RESULTS',
     avatar: '🏆',
-    resolvedGroups: [],
+    resolvedGroups: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"],
     groups: {
-      A: ['MEX', 'RSA', 'KOR', 'CZE'],
-      B: ['CAN', 'SUI', 'QAT', 'BIH'],
-      C: ['BRA', 'MAR', 'SCO', 'HAI'],
-      D: ['USA', 'PAR', 'AUS', 'TUR'],
-      E: ['GER', 'CUW', 'CIV', 'ECU'],
-      F: ['JPN', 'NED', 'SWE', 'TUN'],
-      G: ['BEL', 'EGY', 'IRN', 'NZL'],
-      H: ['ESP', 'URU', 'KSA', 'CPV'],
-      I: ['FRA', 'SEN', 'NOR', 'IRQ'],
-      J: ['ARG', 'ALG', 'AUT', 'JOR'],
-      K: ['POR', 'COL', 'UZB', 'COD'],
-      L: ['ENG', 'CRO', 'GHA', 'PAN']
+      A: ["MEX", "RSA", "KOR", "CZE"],
+      B: ["SUI", "CAN", "BIH", "QAT"],
+      C: ["BRA", "MAR", "SCO", "HAI"],
+      D: ["USA", "AUS", "PAR", "TUR"],
+      E: ["GER", "CIV", "ECU", "CUW"],
+      F: ["NED", "JPN", "SWE", "TUN"],
+      G: ["BEL", "EGY", "IRN", "NZL"],
+      H: ["ESP", "CPV", "URU", "KSA"],
+      I: ["FRA", "NOR", "SEN", "IRQ"],
+      J: ["ARG", "AUT", "ALG", "JOR"],
+      K: ["COL", "POR", "COD", "UZB"],
+      L: ["ENG", "CRO", "GHA", "PAN"]
     },
-    wildcards: [],
+    wildcards: ["COD", "SWE", "ECU", "GHA", "BIH", "ALG", "PAR", "SEN"],
     bracket: {
       r32: Array(16).fill(null),
       r16: Array(8).fill(null),
@@ -51,8 +51,13 @@ const INITIAL_DB = {
     extras: {
       scorer: '',
       mvp: '',
-      goals: null
-    }
+      goals: 280
+    },
+    realR16Teams: ["PAR", "FRA", "CAN", "MAR", "BRA", "NOR", "MEX", "ENG", "POR", "ESP", "USA", "BEL", "ARG", "EGY", "SUI", "COL"],
+    realQFTeams: ["FRA", "MAR", "ESP", "BEL", "NOR", "ENG", "ARG", "SUI"],
+    realSFTeams: [],
+    realFinalTeams: [],
+    realChampion: null
   }
 };
 
@@ -128,8 +133,29 @@ function readDB() {
   }
   
   if (dbMemory.autoSync === undefined) dbMemory.autoSync = true;
-  if (!dbMemory.actualResults.resolvedGroups) dbMemory.actualResults.resolvedGroups = [];
-  if (!dbMemory.actualResults.wildcards) dbMemory.actualResults.wildcards = [];
+  
+  // Garantizar que actualResults contenga los datos cargados del Mundial 2026 de forma predeterminada
+  if (!dbMemory.actualResults) {
+    dbMemory.actualResults = JSON.parse(JSON.stringify(INITIAL_DB.actualResults));
+  }
+  if (!dbMemory.actualResults.realR16Teams || dbMemory.actualResults.realR16Teams.length === 0) {
+    dbMemory.actualResults.realR16Teams = [...INITIAL_DB.actualResults.realR16Teams];
+  }
+  if (!dbMemory.actualResults.realQFTeams || dbMemory.actualResults.realQFTeams.length === 0) {
+    dbMemory.actualResults.realQFTeams = [...INITIAL_DB.actualResults.realQFTeams];
+  }
+  if (!dbMemory.actualResults.resolvedGroups || dbMemory.actualResults.resolvedGroups.length === 0) {
+    dbMemory.actualResults.resolvedGroups = [...INITIAL_DB.actualResults.resolvedGroups];
+  }
+  if (!dbMemory.actualResults.wildcards || dbMemory.actualResults.wildcards.length === 0) {
+    dbMemory.actualResults.wildcards = [...INITIAL_DB.actualResults.wildcards];
+  }
+  if (!dbMemory.actualResults.groups || Object.keys(dbMemory.actualResults.groups).length === 0) {
+    dbMemory.actualResults.groups = { ...INITIAL_DB.actualResults.groups };
+  }
+  if (dbMemory.actualResults.extras.goals === null || dbMemory.actualResults.extras.goals === undefined) {
+    dbMemory.actualResults.extras.goals = INITIAL_DB.actualResults.extras.goals;
+  }
   
   return dbMemory;
 }
