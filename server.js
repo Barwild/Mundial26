@@ -667,6 +667,18 @@ app.post('/api/results', verifyAdmin, async (req, res) => {
   }
   
   const db = readDB();
+  
+  // Check if there are actual structural changes (ignoring real teams arrays)
+  const resultsChanged = JSON.stringify(newResults.groups) !== JSON.stringify(db.actualResults.groups) ||
+                         JSON.stringify(newResults.wildcards) !== JSON.stringify(db.actualResults.wildcards) ||
+                         JSON.stringify(newResults.bracket) !== JSON.stringify(db.actualResults.bracket) ||
+                         JSON.stringify(newResults.extras) !== JSON.stringify(db.actualResults.extras);
+                         
+  if (!resultsChanged && db.autoSync === true) {
+    console.log('ℹ️ Omitiendo guardado manual redundante porque no hay cambios y la sincronización automática está activa.');
+    return res.json({ success: true, message: 'No hay cambios en los resultados y la sincronización automática sigue activa.', autoSync: true });
+  }
+  
   db.actualResults = newResults;
   
   // Limpiar arrays reales para forzar la propagación manual basada en el cuadro
