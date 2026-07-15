@@ -152,7 +152,7 @@ let bracketTeamsCache = {
 // Fetch data from server
 async function fetchServerData() {
   try {
-    const resResults = await fetch('/api/results');
+    const resResults = await fetch('/api/results?t=' + Date.now());
     if (resResults.ok) {
       const data = await resResults.json();
       autoSyncEnabled = data.autoSync !== false;
@@ -166,7 +166,7 @@ async function fetchServerData() {
       updateDbStatusBadge(false, true, false, null, false);
     }
     
-    const resParticipants = await fetch('/api/participants');
+    const resParticipants = await fetch('/api/participants?t=' + Date.now());
     if (resParticipants.ok) {
       const serverParticipants = await resParticipants.json();
       
@@ -2047,7 +2047,7 @@ async function submitImportedCode() {
     
     if (response.ok) {
       // Reload participants list from server to be in sync
-      const res = await fetch('/api/participants');
+      const res = await fetch('/api/participants?t=' + Date.now());
       if (res.ok) {
         participants = await res.json();
       } else {

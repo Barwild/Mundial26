@@ -501,6 +501,11 @@ let isDbInitialized = false;
 let dbInitPromise = null;
 
 async function ensureDbInit(req, res, next) {
+  // Prevent API responses from being cached by Vercel or the browser!
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
   if (!isDbInitialized) {
     if (!dbInitPromise) {
       dbInitPromise = initDB().then(() => {
