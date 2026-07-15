@@ -6,6 +6,7 @@ const { Pool } = require('pg');
 let dbMemory = null;
 let pgPool = null;
 let lastDbError = null;
+let loadedFromPg = false;
 
 function getPool() {
   if (!pgPool) {
@@ -90,10 +91,12 @@ async function initDB() {
       const res = await pool.query('SELECT value FROM mundial_2026_data WHERE key = $1', ['db']);
       if (res.rows.length > 0) {
         dbMemory = JSON.parse(res.rows[0].value);
+        loadedFromPg = true;
         console.log('📂 Datos de la porra cargados exitosamente desde PostgreSQL.');
       } else {
         // Inicializar por primera vez
         dbMemory = JSON.parse(JSON.stringify(INITIAL_DB));
+        loadedFromPg = true;
         await pool.query('INSERT INTO mundial_2026_data (key, value) VALUES ($1, $2)', ['db', JSON.stringify(dbMemory)]);
         console.log('🆕 Base de datos inicializada por primera vez en PostgreSQL.');
       }
@@ -180,6 +183,10 @@ async function writeDB(data) {
 
   const pool = getPool();
   if (pool) {
+    if (!loadedFromPg) {
+      console.warn('⚠️ Omitiendo escritura en PostgreSQL porque no se ha cargado de la base de datos aún.');
+      return;
+    }
     try {
       await pool.query('INSERT INTO mundial_2026_data (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2', ['db', JSON.stringify(data)]);
     } catch (err) {
@@ -528,6 +535,7 @@ async function ensureDbInit(req, res, next) {
       const resDb = await pool.query('SELECT value FROM mundial_2026_data WHERE key = $1', ['db']);
       if (resDb.rows.length > 0) {
         dbMemory = JSON.parse(resDb.rows[0].value);
+        loadedFromPg = true;
         // Also update local copy
         try {
           fs.writeFileSync(DB_FILE, JSON.stringify(dbMemory, null, 2), 'utf8');
