@@ -359,6 +359,7 @@ async function initApp() {
 async function saveUserDraft() {
   if (!adminMode) {
     localStorage.setItem('porra_user_draft', JSON.stringify(userPredictorState));
+    return true;
   } else {
     localStorage.setItem('porra_actual_results', JSON.stringify(actualResults));
     // Send to server
@@ -371,6 +372,9 @@ async function saveUserDraft() {
         },
         body: JSON.stringify(actualResults)
       });
+      if (res.ok) {
+        return true;
+      }
       if (res.status === 401) {
         alert('Contraseña de administrador incorrecta. Se ha limpiado la contraseña guardada.');
         localStorage.removeItem('porra_admin_password');
@@ -379,8 +383,10 @@ async function saveUserDraft() {
         if (cb) cb.checked = false;
         toggleAdminMode();
       }
+      return false;
     } catch (err) {
       console.error('No se pudieron guardar los resultados en el servidor:', err);
+      return false;
     }
   }
 }
@@ -503,21 +509,22 @@ function setupAvatarSelector() {
 
 // Set form fields based on loaded user state
 function populateFormFields() {
-  document.getElementById('input-user-name').value = userPredictorState.name || '';
-  document.getElementById('input-user-contact').value = userPredictorState.contact || '';
+  const state = getActiveState();
+  document.getElementById('input-user-name').value = state.name || '';
+  document.getElementById('input-user-contact').value = state.contact || '';
   
   const avatars = document.querySelectorAll('.avatar-option');
   avatars.forEach(a => {
-    if (a.dataset.avatar === userPredictorState.avatar) {
+    if (a.dataset.avatar === state.avatar) {
       a.classList.add('selected');
     } else {
       a.classList.remove('selected');
     }
   });
 
-  document.getElementById('input-extra-scorer').value = userPredictorState.extras.scorer || '';
-  document.getElementById('input-extra-mvp').value = userPredictorState.extras.mvp || '';
-  document.getElementById('input-extra-goals').value = userPredictorState.extras.goals || '';
+  document.getElementById('input-extra-scorer').value = state.extras?.scorer || '';
+  document.getElementById('input-extra-mvp').value = state.extras?.mvp || '';
+  document.getElementById('input-extra-goals').value = state.extras?.goals !== null && state.extras?.goals !== undefined ? state.extras.goals : '';
 }
 
 // ==========================================
@@ -1032,7 +1039,7 @@ function renderMatchListElement(containerElement, roundKey, matchesData) {
 // ==========================================
 
 async function generateAndShowSummary() {
-  const state = userPredictorState;
+  const state = getActiveState();
   
   // Read extra questions
   state.extras.scorer = document.getElementById('input-extra-scorer').value.trim();
@@ -1040,9 +1047,22 @@ async function generateAndShowSummary() {
   const goalsVal = parseInt(document.getElementById('input-extra-goals').value);
   state.extras.goals = isNaN(goalsVal) ? null : goalsVal;
   
-  saveUserDraft();
+  const savedOk = await saveUserDraft();
   
-  // Submit to Server Database
+  if (adminMode) {
+    if (savedOk) {
+      alert('¡Resultados reales del Mundial actualizados y guardados en el servidor con éxito!');
+    } else {
+      alert('⚠️ No se pudieron guardar los resultados reales en el servidor central.\nSe han guardado localmente en tu navegador. Por favor, comprueba la conexión o la contraseña de administrador.');
+    }
+    // Re-render and calculate to reflect changes
+    calculatePlayerScores();
+    renderLeaderboardTable();
+    switchMainTab('leaderboard');
+    return;
+  }
+  
+  // Submit to Server Database (User predictor mode)
   let submittedOk = false;
   let serverErrorMsg = '';
   try {
