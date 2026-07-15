@@ -356,12 +356,18 @@ async function initApp() {
 }
 
 // Save active state to localStorage / Server
-async function saveUserDraft() {
+async function saveUserDraft(forceServerSave = false) {
   if (!adminMode) {
     localStorage.setItem('porra_user_draft', JSON.stringify(userPredictorState));
     return true;
   } else {
     localStorage.setItem('porra_actual_results', JSON.stringify(actualResults));
+    
+    // Only send to server if explicitly requested (e.g. clicking the final save button)
+    if (!forceServerSave) {
+      return true;
+    }
+    
     // Send to server
     try {
       const res = await fetch('/api/results', {
@@ -1047,7 +1053,7 @@ async function generateAndShowSummary() {
   const goalsVal = parseInt(document.getElementById('input-extra-goals').value);
   state.extras.goals = isNaN(goalsVal) ? null : goalsVal;
   
-  const savedOk = await saveUserDraft();
+  const savedOk = await saveUserDraft(true);
   
   if (adminMode) {
     if (savedOk) {
