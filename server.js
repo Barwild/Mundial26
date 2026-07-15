@@ -1,11 +1,27 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const { Client } = require('pg');
+const { Pool } = require('pg');
 
 let dbMemory = null;
-let pgClient = null;
+let pgPool = null;
 let lastDbError = null;
+
+function getPool() {
+  if (!pgPool) {
+    const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+    if (dbUrl) {
+      pgPool = new Pool({
+        connectionString: dbUrl,
+        ssl: { rejectUnauthorized: false },
+        max: 5, // Vercel low connection count limit
+        idleTimeoutMillis: 15000,
+        connectionTimeoutMillis: 2000,
+      });
+    }
+  }
+  return pgPool;
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -63,40 +79,33 @@ const INITIAL_DB = {
 
 // Initialize DB file if not exists
 async function initDB() {
-  const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
-  if (dbUrl) {
+  const pool = getPool();
+  if (pool) {
     console.log('🔌 Base de datos detectada (DATABASE_URL o POSTGRES_URL). Configurando conexión con PostgreSQL...');
     try {
-      pgClient = new Client({
-        connectionString: dbUrl,
-        ssl: { rejectUnauthorized: false }
-      });
-      await pgClient.connect();
-      console.log('✅ Conexión con PostgreSQL establecida correctamente.');
-
       // Crear tabla si no existe
-      await pgClient.query('CREATE TABLE IF NOT EXISTS mundial_2026_data (key VARCHAR(255) PRIMARY KEY, value TEXT)');
+      await pool.query('CREATE TABLE IF NOT EXISTS mundial_2026_data (key VARCHAR(255) PRIMARY KEY, value TEXT)');
 
       // Cargar base de datos desde PostgreSQL
-      const res = await pgClient.query('SELECT value FROM mundial_2026_data WHERE key = $1', ['db']);
+      const res = await pool.query('SELECT value FROM mundial_2026_data WHERE key = $1', ['db']);
       if (res.rows.length > 0) {
         dbMemory = JSON.parse(res.rows[0].value);
         console.log('📂 Datos de la porra cargados exitosamente desde PostgreSQL.');
       } else {
         // Inicializar por primera vez
         dbMemory = JSON.parse(JSON.stringify(INITIAL_DB));
-        await pgClient.query('INSERT INTO mundial_2026_data (key, value) VALUES ($1, $2)', ['db', JSON.stringify(dbMemory)]);
+        await pool.query('INSERT INTO mundial_2026_data (key, value) VALUES ($1, $2)', ['db', JSON.stringify(dbMemory)]);
         console.log('🆕 Base de datos inicializada por primera vez en PostgreSQL.');
       }
 
       // Guardar una copia local de respaldo
       fs.writeFileSync(DB_FILE, JSON.stringify(dbMemory, null, 2), 'utf8');
+      lastDbError = null;
       return;
     } catch (err) {
       console.error('❌ Error de conexión o inicialización de PostgreSQL:', err.message);
       lastDbError = err.message;
       console.log('⚠️ Rebotando a base de datos de archivos local (data.json)...');
-      pgClient = null;
     }
   }
 
@@ -169,9 +178,10 @@ async function writeDB(data) {
     console.error('Error escribiendo en la base de datos local:', err);
   }
 
-  if (pgClient) {
+  const pool = getPool();
+  if (pool) {
     try {
-      await pgClient.query('INSERT INTO mundial_2026_data (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2', ['db', JSON.stringify(data)]);
+      await pool.query('INSERT INTO mundial_2026_data (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2', ['db', JSON.stringify(data)]);
     } catch (err) {
       console.error('❌ Error persistiendo datos en PostgreSQL:', err.message);
       throw err; // Propagate error so API requests fail when DB fails to write!
@@ -498,7 +508,7 @@ async function ensureDbInit(req, res, next) {
 
   // Check health: if Postgres is configured but offline, and local cache is empty, fail to prevent serving blank data.
   const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
-  if (dbUrl && !pgClient) {
+  if (dbUrl && lastDbError) {
     const isLocalEmpty = !dbMemory || !dbMemory.participants || dbMemory.participants.length <= 1;
     if (isLocalEmpty) {
       return res.status(503).json({
@@ -512,9 +522,10 @@ async function ensureDbInit(req, res, next) {
 
   // Reload the database state from PostgreSQL on every request if pgClient is connected
   // to avoid serving stale in-memory data in stateless/serverless instances!
-  if (pgClient) {
+  const pool = getPool();
+  if (pool) {
     try {
-      const resDb = await pgClient.query('SELECT value FROM mundial_2026_data WHERE key = $1', ['db']);
+      const resDb = await pool.query('SELECT value FROM mundial_2026_data WHERE key = $1', ['db']);
       if (resDb.rows.length > 0) {
         dbMemory = JSON.parse(resDb.rows[0].value);
         // Also update local copy
@@ -522,8 +533,10 @@ async function ensureDbInit(req, res, next) {
           fs.writeFileSync(DB_FILE, JSON.stringify(dbMemory, null, 2), 'utf8');
         } catch (fsErr) {}
       }
+      lastDbError = null; // Reset error on successful query
     } catch (dbErr) {
       console.error('❌ Error recargando datos desde PostgreSQL en middleware:', dbErr.message);
+      lastDbError = dbErr.message;
     }
   }
 
@@ -625,7 +638,7 @@ app.get('/api/results', (req, res) => {
   res.json({
     ...db.actualResults,
     autoSync: db.autoSync !== false,
-    dbConnected: pgClient !== null,
+    dbConnected: getPool() !== null && !lastDbError,
     dbUrlPresent: !!process.env.DATABASE_URL || !!process.env.POSTGRES_URL,
     dbError: lastDbError,
     isVercel: !!(process.env.VERCEL || process.env.VERCEL_ENV)
