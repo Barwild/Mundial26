@@ -237,8 +237,14 @@ async function syncLocalParticipantsToServer() {
     return;
   }
   
+  if (!adminPassword) {
+    adminPassword = prompt('Introduce la contraseña de administrador para realizar esta acción:') || '';
+    localStorage.setItem('porra_admin_password', adminPassword);
+  }
+  
   let successCount = 0;
   let failCount = 0;
+  let invalidAuth = false;
   
   for (const p of localOnly) {
     // Remove the temporary flag before uploading
@@ -250,13 +256,18 @@ async function syncLocalParticipantsToServer() {
       const response = await fetch('/api/participants', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'x-admin-password': adminPassword
         },
         body: JSON.stringify(cleanBet)
       });
       
       if (response.ok) {
         successCount++;
+      } else if (response.status === 403 || response.status === 401) {
+        invalidAuth = true;
+        failCount++;
+        break;
       } else {
         failCount++;
       }
@@ -265,7 +276,14 @@ async function syncLocalParticipantsToServer() {
     }
   }
   
-  if (successCount > 0) {
+  if (invalidAuth) {
+    alert('Contraseña de administrador incorrecta o el registro está cerrado. Se ha limpiado la contraseña guardada.');
+    localStorage.removeItem('porra_admin_password');
+    adminPassword = '';
+    const cb = document.getElementById('checkbox-admin-mode');
+    if (cb) cb.checked = false;
+    toggleAdminMode();
+  } else if (successCount > 0) {
     alert(`¡Sincronización completada! Se subieron ${successCount} apuestas al servidor con éxito.` + (failCount > 0 ? ` (${failCount} fallaron).` : ''));
     // Force a fresh fetch from server
     await fetchServerData();

@@ -19,6 +19,12 @@ function getPool() {
         idleTimeoutMillis: 15000,
         connectionTimeoutMillis: 2000,
       });
+      
+      // Registrar manejador de errores en el Pool para evitar que excepciones no capturadas
+      // en conexiones inactivas terminen tumbando el proceso del servidor.
+      pgPool.on('error', (err) => {
+        console.error('⚠️ Error inesperado en cliente inactivo de PostgreSQL:', err.message);
+      });
     }
   }
   return pgPool;
