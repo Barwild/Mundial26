@@ -1631,106 +1631,160 @@ function updateSyncDisplay() {
   }
 }
 
+// Helper for flexible text matching for player names (Scorer, MVP, etc.)
+function matchExtraText(prediction, actual) {
+  if (!prediction || !actual) return false;
+  
+  const normalize = (str) => String(str)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s]/g, "");
+    
+  const normPred = normalize(prediction);
+  const normActual = normalize(actual);
+  
+  if (!normPred || !normActual) return false;
+  
+  // Exact match after normalization
+  if (normPred === normActual) return true;
+  
+  // Substring or word match (minimum 3 chars)
+  if (normPred.length >= 3 && normActual.length >= 3) {
+    if (normActual.includes(normPred) || normPred.includes(normActual)) {
+      return true;
+    }
+    const predWords = normPred.split(/\s+/).filter(w => w.length >= 3);
+    const actualWords = normActual.split(/\s+/).filter(w => w.length >= 3);
+    for (const pw of predWords) {
+      for (const aw of actualWords) {
+        if (pw === aw) return true;
+      }
+    }
+  }
+  return false;
+}
+
 // Compute scores for all players based on actualResults
 function calculatePlayerScores() {
   participants.forEach(p => {
-    let score = 0;
-    
+    let groupsScore = 0;
+    let wildcardsScore = 0;
+    let r16Score = 0;
+    let qfScore = 0;
+    let sfScore = 0;
+    let finalistsScore = 0;
+    let championScore = 0;
+    let scorerScore = 0;
+    let mvpScore = 0;
+
+    // Ensure extras object exists
+    if (!p.extras) p.extras = { scorer: '', mvp: '', goals: null };
+    const actualExtras = actualResults?.extras || { scorer: '', mvp: '', goals: null };
+
     // A. Groups Stage Matching (12 groups A-L)
-    Object.keys(p.groups).forEach(key => {
-      // Solo calcular puntos si el grupo está oficialmente finalizado
-      if (!actualResults.resolvedGroups || !actualResults.resolvedGroups.includes(key)) {
-        return;
-      }
-      
-      const pGroup = p.groups[key];
-      const rGroup = actualResults.groups[key];
-      
-      const p1 = pGroup[0];
-      const p2 = pGroup[1];
-      const r1 = rGroup[0];
-      const r2 = rGroup[1];
-      
-      // Check for qualifications (regardless of exact position)
-      const p1Qualified = p1 === r1 || p1 === r2;
-      const p2Qualified = p2 === r1 || p2 === r2;
-      
-      if (p1Qualified) score += 3;
-      if (p2Qualified) score += 3;
-      
-      // Exact position bonus (+2 points)
-      if (p1 === r1) score += 2;
-      if (p2 === r2) score += 2;
-    });
+    if (p.groups && actualResults.groups) {
+      Object.keys(p.groups).forEach(key => {
+        if (!actualResults.resolvedGroups || !actualResults.resolvedGroups.includes(key)) {
+          return;
+        }
+        
+        const pGroup = p.groups[key];
+        const rGroup = actualResults.groups[key];
+        if (!pGroup || !rGroup) return;
+
+        const p1 = pGroup[0];
+        const p2 = pGroup[1];
+        const r1 = rGroup[0];
+        const r2 = rGroup[1];
+
+        const p1Qualified = p1 === r1 || p1 === r2;
+        const p2Qualified = p2 === r1 || p2 === r2;
+
+        if (p1Qualified) groupsScore += 3;
+        if (p2Qualified) groupsScore += 3;
+
+        if (p1 === r1) groupsScore += 2;
+        if (p2 === r2) groupsScore += 2;
+      });
+    }
 
     // B. Best Third Places Wildcards
-    // Players selected 8 wildcards. Only calculate points if group stage is fully resolved.
-    if (actualResults.resolvedGroups && actualResults.resolvedGroups.length === 12 && actualResults.wildcards) {
+    if (actualResults.resolvedGroups && actualResults.resolvedGroups.length === 12 && actualResults.wildcards && p.wildcards) {
       p.wildcards.forEach(wildcardTeamId => {
         if (actualResults.wildcards.includes(wildcardTeamId)) {
-          score += 3; // +3 points for correct wildcard qualifier
+          wildcardsScore += 3;
         }
       });
     }
 
     // C. Round of 16 (Winners of R32 matches)
-    // Player predicts which 16 teams qualify for R16
     const playerR16Teams = getTeamsAdvancingToRound(p, 'r32');
     const realR16Teams = getTeamsAdvancingToRound(actualResults, 'r32');
-    
     playerR16Teams.forEach(teamId => {
       if (teamId && realR16Teams.includes(teamId)) {
-        score += 5; // +5 points for each correct R16 team
+        r16Score += 5;
       }
     });
 
     // D. Quarterfinals (Winners of R16)
     const playerQFTeams = getTeamsAdvancingToRound(p, 'r16');
     const realQFTeams = getTeamsAdvancingToRound(actualResults, 'r16');
-    
     playerQFTeams.forEach(teamId => {
       if (teamId && realQFTeams.includes(teamId)) {
-        score += 8; // +8 points for each correct QF team
+        qfScore += 8;
       }
     });
 
     // E. Semifinals (Winners of QF)
     const playerSFTeams = getTeamsAdvancingToRound(p, 'qf');
     const realSFTeams = getTeamsAdvancingToRound(actualResults, 'qf');
-    
     playerSFTeams.forEach(teamId => {
       if (teamId && realSFTeams.includes(teamId)) {
-        score += 12; // +12 points for each correct SF team
+        sfScore += 12;
       }
     });
 
     // F. Finalists (Winners of SF)
     const playerFinalTeams = getTeamsAdvancingToRound(p, 'sf');
     const realFinalTeams = getTeamsAdvancingToRound(actualResults, 'sf');
-    
     playerFinalTeams.forEach(teamId => {
       if (teamId && realFinalTeams.includes(teamId)) {
-        score += 18; // +18 points for each correct Finalist
+        finalistsScore += 18;
       }
     });
 
     // G. Champion (Winner of F)
     const playerChampion = getChampionForState(p);
     const realChampion = getChampionForState(actualResults);
-    
-    if (playerChampion && playerChampion === realChampion) {
-      score += 25; // +25 points for correct champion
+    if (playerChampion && realChampion && playerChampion === realChampion) {
+      championScore = 25;
     }
 
     // H. Extras (Scorer and MVP)
-    if (actualResults.extras.scorer && p.extras.scorer && p.extras.scorer.trim().toLowerCase() === actualResults.extras.scorer.trim().toLowerCase()) {
-      score += 10;
+    if (actualExtras.scorer && p.extras.scorer && matchExtraText(p.extras.scorer, actualExtras.scorer)) {
+      scorerScore = 10;
     }
-    if (actualResults.extras.mvp && p.extras.mvp && p.extras.mvp.trim().toLowerCase() === actualResults.extras.mvp.trim().toLowerCase()) {
-      score += 10;
+    if (actualExtras.mvp && p.extras.mvp && matchExtraText(p.extras.mvp, actualExtras.mvp)) {
+      mvpScore = 10;
     }
 
-    p.score = score;
+    const bracketScore = r16Score + qfScore + sfScore + finalistsScore;
+    const extrasScore = scorerScore + mvpScore;
+    const totalScore = groupsScore + wildcardsScore + bracketScore + championScore + extrasScore;
+
+    p.score = totalScore;
+    p.scoreBreakdown = {
+      groups: groupsScore,
+      wildcards: wildcardsScore,
+      bracket: bracketScore,
+      champion: championScore,
+      scorer: scorerScore,
+      mvp: mvpScore,
+      extras: extrasScore,
+      total: totalScore
+    };
   });
 
   // Sort participants by score (highest first)
@@ -1742,17 +1796,16 @@ function calculatePlayerScores() {
       return b.score - a.score;
     }
     
-    // Tiebreaker 1: Champion correct
-    const aChampCorrect = getChampionForState(a) === getChampionForState(actualResults);
-    const bChampCorrect = getChampionForState(b) === getChampionForState(actualResults);
+    const realChamp = getChampionForState(actualResults);
+    const aChampCorrect = !!realChamp && getChampionForState(a) === realChamp;
+    const bChampCorrect = !!realChamp && getChampionForState(b) === realChamp;
     if (aChampCorrect !== bChampCorrect) {
       return bChampCorrect ? 1 : -1;
     }
     
-    // Tiebreaker 2: Goal prediction proximity
-    const realGoals = actualResults.extras.goals || 0;
-    const aGoalsDiff = Math.abs((a.extras.goals || 0) - realGoals);
-    const bGoalsDiff = Math.abs((b.extras.goals || 0) - realGoals);
+    const realGoals = actualResults?.extras?.goals || 0;
+    const aGoalsDiff = Math.abs((a.extras?.goals || 0) - realGoals);
+    const bGoalsDiff = Math.abs((b.extras?.goals || 0) - realGoals);
     return aGoalsDiff - bGoalsDiff;
   });
 
@@ -2103,9 +2156,22 @@ let activeViewBracketTab = 'r32';
 
 function viewPlayerPrediction(index) {
   viewPlayerPredictionState = participants[index];
+  const p = viewPlayerPredictionState;
   
-  document.getElementById('modal-view-title').innerText = `Apuesta de ${viewPlayerPredictionState.name}`;
-  document.getElementById('modal-view-score-banner').innerText = `Puntuación Actual: ${viewPlayerPredictionState.score || 0} puntos`;
+  document.getElementById('modal-view-title').innerText = `Apuesta de ${p.name}`;
+  
+  const sb = p.scoreBreakdown || { groups: 0, wildcards: 0, bracket: 0, champion: 0, extras: 0, total: p.score || 0 };
+  const scoreBanner = document.getElementById('modal-view-score-banner');
+  if (scoreBanner) {
+    scoreBanner.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div><strong>Puntuación Total:</strong> <span style="font-size:1.3rem; color:var(--accent-gold); font-weight:bold;">${sb.total || 0} pts</span></div>
+        <div style="font-size:0.85rem; opacity:0.9;">
+          Grupos: <strong>${sb.groups + sb.wildcards}</strong> pts | Cuadro: <strong>${sb.bracket}</strong> pts | Campeón: <strong>${sb.champion}</strong> pts | Extras: <strong>${sb.extras}</strong> pts
+        </div>
+      </div>
+    `;
+  }
   
   // Render Read-Only components
   renderViewOnlyGroups();
@@ -2338,25 +2404,68 @@ function renderViewOnlyExtras() {
   container.innerHTML = '';
   
   const p = viewPlayerPredictionState;
+  if (!p) return;
+
   const champId = getChampionForState(p);
   const champion = champId ? TEAMS[champId] : null;
-  
+  const realChamp = getChampionForState(actualResults);
+  const realExtras = actualResults?.extras || {};
+
+  let champBadge = '';
+  if (realChamp) {
+    if (champId && champId === realChamp) {
+      champBadge = '<span class="badge-status badge-success" style="margin-left:8px; padding:2px 8px; border-radius:12px; background:rgba(46,204,113,0.2); color:#2ecc71; font-weight:bold; font-size:0.75rem;">✅ +25 pts</span>';
+    } else {
+      champBadge = '<span class="badge-status badge-danger" style="margin-left:8px; padding:2px 8px; border-radius:12px; background:rgba(231,76,60,0.2); color:#e74c3c; font-weight:bold; font-size:0.75rem;">❌ 0 pts</span>';
+    }
+  } else {
+    champBadge = '<span class="badge-status badge-pending" style="margin-left:8px; padding:2px 8px; border-radius:12px; background:rgba(241,196,15,0.2); color:#f1c40f; font-size:0.75rem;">⏳ Pendiente</span>';
+  }
+
+  let scorerBadge = '';
+  if (realExtras.scorer) {
+    if (p.extras?.scorer && matchExtraText(p.extras.scorer, realExtras.scorer)) {
+      scorerBadge = `<span class="badge-status badge-success" style="margin-left:8px; padding:2px 8px; border-radius:12px; background:rgba(46,204,113,0.2); color:#2ecc71; font-weight:bold; font-size:0.75rem;">✅ +10 pts</span>`;
+    } else {
+      scorerBadge = `<span class="badge-status badge-danger" style="margin-left:8px; padding:2px 8px; border-radius:12px; background:rgba(231,76,60,0.2); color:#e74c3c; font-weight:bold; font-size:0.75rem;">❌ 0 pts (Real: ${realExtras.scorer})</span>`;
+    }
+  } else {
+    scorerBadge = '<span class="badge-status badge-pending" style="margin-left:8px; padding:2px 8px; border-radius:12px; background:rgba(241,196,15,0.2); color:#f1c40f; font-size:0.75rem;">⏳ Pendiente</span>';
+  }
+
+  let mvpBadge = '';
+  if (realExtras.mvp) {
+    if (p.extras?.mvp && matchExtraText(p.extras.mvp, realExtras.mvp)) {
+      mvpBadge = `<span class="badge-status badge-success" style="margin-left:8px; padding:2px 8px; border-radius:12px; background:rgba(46,204,113,0.2); color:#2ecc71; font-weight:bold; font-size:0.75rem;">✅ +10 pts</span>`;
+    } else {
+      mvpBadge = `<span class="badge-status badge-danger" style="margin-left:8px; padding:2px 8px; border-radius:12px; background:rgba(231,76,60,0.2); color:#e74c3c; font-weight:bold; font-size:0.75rem;">❌ 0 pts (Real: ${realExtras.mvp})</span>`;
+    }
+  } else {
+    mvpBadge = '<span class="badge-status badge-pending" style="margin-left:8px; padding:2px 8px; border-radius:12px; background:rgba(241,196,15,0.2); color:#f1c40f; font-size:0.75rem;">⏳ Pendiente</span>';
+  }
+
+  let goalsInfo = '';
+  if (realExtras.goals !== null && realExtras.goals !== undefined && p.extras?.goals !== null && p.extras?.goals !== undefined) {
+    const diff = Math.abs(p.extras.goals - realExtras.goals);
+    goalsInfo = `<span style="font-size:0.75rem; color:var(--text-muted); margin-left:8px;">(Real: ${realExtras.goals}, Dif: ${diff})</span>`;
+  }
+
   container.innerHTML = `
-    <div class="summary-item">
-      <span class="summary-item-label">Campeón Pronosticado:</span>
-      <span class="summary-item-value">${champion ? `<span class="team-flag">${champion.flag}</span> ${champion.name}` : 'Ninguno'}</span>
+    <div class="summary-item" style="padding:10px; border-bottom:1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; align-items:center;">
+      <span class="summary-item-label" style="font-weight:600;">🏆 Campeón Pronosticado:</span>
+      <span class="summary-item-value">${champion ? `<span class="team-flag">${champion.flag}</span> ${champion.name}` : 'Ninguno'} ${champBadge}</span>
     </div>
-    <div class="summary-item">
-      <span class="summary-item-label">Bota de Oro:</span>
-      <span class="summary-item-value">${p.extras.scorer || 'Ninguno'}</span>
+    <div class="summary-item" style="padding:10px; border-bottom:1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; align-items:center;">
+      <span class="summary-item-label" style="font-weight:600;">⚡ Bota de Oro:</span>
+      <span class="summary-item-value">${p.extras?.scorer || 'Ninguno'} ${scorerBadge}</span>
     </div>
-    <div class="summary-item">
-      <span class="summary-item-label">Balón de Oro (MVP):</span>
-      <span class="summary-item-value">${p.extras.mvp || 'Ninguno'}</span>
+    <div class="summary-item" style="padding:10px; border-bottom:1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; align-items:center;">
+      <span class="summary-item-label" style="font-weight:600;">⭐ Balón de Oro (MVP):</span>
+      <span class="summary-item-value">${p.extras?.mvp || 'Ninguno'} ${mvpBadge}</span>
     </div>
-    <div class="summary-item">
-      <span class="summary-item-label">Goles Totales Mundial:</span>
-      <span class="summary-item-value">${p.extras.goals ? `${p.extras.goals} goles` : 'Ninguno'}</span>
+    <div class="summary-item" style="padding:10px; display:flex; justify-content:space-between; align-items:center;">
+      <span class="summary-item-label" style="font-weight:600;">⚽ Goles Totales Mundial:</span>
+      <span class="summary-item-value">${p.extras?.goals !== null && p.extras?.goals !== undefined ? `${p.extras.goals} goles` : 'Ninguno'} ${goalsInfo}</span>
     </div>
   `;
 }
