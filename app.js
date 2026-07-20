@@ -1943,6 +1943,13 @@ function renderLeaderboardTable() {
     const champId = getChampionForState(p);
     const champion = champId ? TEAMS[champId] : null;
     
+    const sb = p.scoreBreakdown || { groups: 0, wildcards: 0, bracket: 0, champion: 0, extras: 0, total: p.score || 0 };
+    const groupTotal = (sb.groups || 0) + (sb.wildcards || 0);
+    const bracketTotal = (sb.bracket || 0) + (sb.champion || 0);
+    const extrasTotal = sb.extras || 0;
+
+    const extrasTag = extrasTotal > 0 ? `<div style="margin-top:2px;"><span style="display:inline-block; font-size:0.7rem; padding:1px 6px; border-radius:8px; background:rgba(255,215,0,0.15); color:var(--accent-gold); border:1px solid rgba(255,215,0,0.3); font-weight:bold;">+${extrasTotal} extra</span></div>` : '';
+
     tr.innerHTML = `
       <td style="text-align:center;" class="rank-cell">${rankHtml}</td>
       <td>
@@ -1961,7 +1968,11 @@ function renderLeaderboardTable() {
       <td style="text-align:center;">
         ${champion ? `<span class="team-flag" title="${champion.name}">${champion.flag}</span> ${champion.name}` : '<span style="color:var(--text-muted);">TBD</span>'}
       </td>
-      <td style="text-align:center;" class="score-cell">${p.score || 0}</td>
+      <td style="text-align:center;" class="score-cell">
+        <div style="font-weight:bold; font-size:1.1rem; color:var(--accent-gold);">${p.score || 0}</div>
+        <div style="font-size:0.7rem; color:var(--text-muted); margin-top:1px;" title="G: Grupos (${groupTotal}) | C: Cuadro (${bracketTotal}) | E: Extras (${extrasTotal})">G:${groupTotal} · C:${bracketTotal} · E:${extrasTotal}</div>
+        ${extrasTag}
+      </td>
       <td style="text-align:center;">
         <div class="actions-cell">
           <button class="icon-btn" title="Ver pronóstico" onclick="viewPlayerPrediction(${idx})">👁️</button>
