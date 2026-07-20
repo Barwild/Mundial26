@@ -1511,16 +1511,25 @@ function toggleAdminMode() {
   const navIndicator = document.getElementById('admin-nav-indicator');
   const alertWarning = document.getElementById('admin-mode-warning-alert');
   const syncCard = document.getElementById('admin-sync-card');
+  const extrasCard = document.getElementById('admin-extras-card');
   
   if (adminMode) {
     navIndicator.style.display = 'inline-block';
     alertWarning.style.display = 'flex';
     if (syncCard) syncCard.style.display = 'block';
+    if (extrasCard) {
+      extrasCard.style.display = 'block';
+      const inputScorer = document.getElementById('admin-input-scorer');
+      const inputMvp = document.getElementById('admin-input-mvp');
+      if (inputScorer) inputScorer.value = actualResults?.extras?.scorer || '';
+      if (inputMvp) inputMvp.value = actualResults?.extras?.mvp || '';
+    }
     updateSyncDisplay();
   } else {
     navIndicator.style.display = 'none';
     alertWarning.style.display = 'none';
     if (syncCard) syncCard.style.display = 'none';
+    if (extrasCard) extrasCard.style.display = 'none';
   }
   
   // Recalculate bracket cache for new active state
@@ -1533,6 +1542,28 @@ function toggleAdminMode() {
   if (activeStep > 1) {
     nextStep(1);
   }
+}
+
+async function saveAdminExtrasQuickly() {
+  const scorerVal = document.getElementById('admin-input-scorer').value.trim();
+  const mvpVal = document.getElementById('admin-input-mvp').value.trim();
+  
+  if (!actualResults.extras) {
+    actualResults.extras = { scorer: '', mvp: '', goals: null };
+  }
+  actualResults.extras.scorer = scorerVal;
+  actualResults.extras.mvp = mvpVal;
+  
+  const savedOk = await saveUserDraft(true);
+  
+  if (savedOk) {
+    alert('¡Ganadores extra (Bota de Oro y MVP) guardados y puntuaciones recalculadas con éxito!');
+  } else {
+    alert('Guardado localmente. (No se pudo conectar con el servidor central).');
+  }
+  
+  calculatePlayerScores();
+  renderLeaderboardTable();
 }
 
 // Force sync from internet

@@ -344,6 +344,29 @@
         <strong>⚠️ Modo Administrador Activo:</strong> Los cambios que realices en la pestaña <strong>"Crear mi Porra"</strong> representarán ahora los <strong>resultados reales</strong> del Mundial. Los puntos de los jugadores se recalcularán automáticamente basándose en dichos resultados.
       </div>
 
+      <!-- Admin Quick Card for Extra Winners -->
+      <div class="glass-card" id="admin-extras-card" style="display:none; padding:15px; margin-bottom:20px; border: 1px solid rgba(255, 215, 0, 0.2);">
+        <h4 style="font-family:'Outfit'; color:var(--accent-gold); margin:0 0 8px 0; display:flex; align-items:center; gap:8px;">
+          ⚡ Ganadores Oficiales de Preguntas Extra (Bota de Oro & Balón de Oro)
+        </h4>
+        <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:12px;">
+          Introduce los nombres oficiales para conceder automáticamente los +10 puntos extra a todos los participantes acertantes.
+        </p>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+          <div style="flex:1; min-width:200px;">
+            <label style="font-size:0.8rem; font-weight:600; display:block; margin-bottom:4px; color:var(--text-primary);">⚡ Bota de Oro (Máximo Goleador):</label>
+            <input type="text" id="admin-input-scorer" class="search-input" style="width:100%;" placeholder="Ej. Kylian Mbappé o Oyarzabal">
+          </div>
+          <div style="flex:1; min-width:200px;">
+            <label style="font-size:0.8rem; font-weight:600; display:block; margin-bottom:4px; color:var(--text-primary);">⭐ Balón de Oro (MVP):</label>
+            <input type="text" id="admin-input-mvp" class="search-input" style="width:100%;" placeholder="Ej. Lamine Yamal">
+          </div>
+          <button class="btn btn-primary" style="padding:8px 16px; height:42px; font-size:0.85rem;" onclick="saveAdminExtrasQuickly()">
+            💾 Guardar y Recalcular Puntos
+          </button>
+        </div>
+      </div>
+
       <!-- API Sync Dashboard Card -->
       <div class="glass-card" id="admin-sync-card" style="display:none; padding:15px; margin-bottom:20px; border: 1px solid rgba(255, 215, 0, 0.15);">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px;">
